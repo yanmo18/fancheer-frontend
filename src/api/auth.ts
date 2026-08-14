@@ -4,6 +4,9 @@ import type { CaptchaResult, LoginResult, UserInfo } from '@/types/api'
 export const getCaptcha = () =>
   request<CaptchaResult>({ url: '/api/auth/captcha', method: 'GET' })
 
+export const getRegisterAvatars = () =>
+  request<Array<{ id: string; url: string }>>({ url: '/api/auth/avatars', method: 'GET' })
+
 export const login = (username: string, password: string) =>
   request<LoginResult>({
     url: '/api/auth/login',
@@ -17,6 +20,7 @@ export const register = (payload: {
   captchaId: string
   captchaText: string
   agreement: boolean
+  avatarId?: string
 }) =>
   request<{ userId: string }>({
     url: '/api/auth/register',

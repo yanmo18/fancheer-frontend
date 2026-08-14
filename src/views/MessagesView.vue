@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import * as messagesApi from '@/api/messages'
-import type { MessageItem, PrivateReplyItem, PublicReplyItem } from '@/types/api'
+import type { MessageItem, PrivateReplyItem, PublicReplyItem, SentPrivateMessageItem } from '@/types/api'
 import { formatDateTime } from '@/utils/datetime'
 
 type Tab = 'public' | 'private'
@@ -10,6 +10,7 @@ const tab = ref<Tab>('public')
 const messages = ref<MessageItem[]>([])
 const publicReplies = ref<PublicReplyItem[]>([])
 const privateReplies = ref<PrivateReplyItem[]>([])
+const sentPrivateMessages = ref<SentPrivateMessageItem[]>([])
 const content = ref('')
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -75,8 +76,12 @@ async function loadPrivate() {
   loading.value = true
   error.value = ''
   try {
-    const data = await messagesApi.getPrivateReplies()
-    privateReplies.value = data.list
+    const [replies, sent] = await Promise.all([
+      messagesApi.getPrivateReplies(),
+      messagesApi.getSentPrivateMessages(),
+    ])
+    privateReplies.value = replies.list
+    sentPrivateMessages.value = sent.list
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
@@ -248,6 +253,25 @@ onMounted(load)
 
     <template v-else>
       <section class="section">
+        <h2 class="section-title">我发出的私信</h2>
+        <div v-if="sentPrivateMessages.length" class="message-list">
+          <article v-for="msg in sentPrivateMessages" :key="msg.id" class="card message sent">
+            <div class="meta">
+              <div class="author">
+                <strong>我</strong>
+                <span class="badge" :class="msg.hasReply ? 'replied' : 'pending'">
+                  {{ msg.hasReply ? '已回复' : '待回复' }}
+                </span>
+              </div>
+              <span class="muted">{{ formatDateTime(msg.createdAt) }}</span>
+            </div>
+            <p>{{ msg.content }}</p>
+          </article>
+        </div>
+        <p v-else class="muted empty">还没有发出过私密留言</p>
+      </section>
+
+      <section class="section">
         <h2 class="section-title">博主回复我的私信</h2>
         <div v-if="privateReplies.length" class="message-list">
           <article v-for="reply in privateReplies" :key="reply.id" class="card message reply">
@@ -364,6 +388,20 @@ textarea {
 
 .message.reply {
   border-left: 3px solid var(--primary);
+}
+
+.message.sent {
+  border-left: 3px solid #94a3b8;
+}
+
+.badge.replied {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.pending {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .meta {

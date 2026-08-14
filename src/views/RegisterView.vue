@@ -11,6 +11,8 @@ const captchaText = ref('')
 const captchaId = ref('')
 const captchaSvg = ref('')
 const agreement = ref(false)
+const avatars = ref<Array<{ id: string; url: string }>>([])
+const selectedAvatarId = ref('')
 const loading = ref(false)
 const error = ref('')
 
@@ -20,7 +22,14 @@ async function loadCaptcha() {
   captchaSvg.value = data.svg
 }
 
-onMounted(loadCaptcha)
+onMounted(async () => {
+  await loadCaptcha()
+  try {
+    avatars.value = await authApi.getRegisterAvatars()
+  } catch {
+    // 无预设头像时仍可注册
+  }
+})
 
 async function submit() {
   error.value = ''
@@ -36,6 +45,7 @@ async function submit() {
       captchaId: captchaId.value,
       captchaText: captchaText.value,
       agreement: true,
+      avatarId: selectedAvatarId.value || undefined,
     })
     router.push('/login')
   } catch (e) {
@@ -59,6 +69,23 @@ async function submit() {
         密码
         <input v-model="password" type="password" required />
       </label>
+
+      <div v-if="avatars.length" class="avatar-section">
+        <span class="field-label">选择头像（可选）</span>
+        <div class="avatar-grid">
+          <button
+            v-for="item in avatars"
+            :key="item.id"
+            type="button"
+            class="avatar-btn"
+            :class="{ selected: selectedAvatarId === item.id }"
+            @click="selectedAvatarId = selectedAvatarId === item.id ? '' : item.id"
+          >
+            <img :src="item.url" alt="" />
+          </button>
+        </div>
+      </div>
+
       <div class="captcha-row">
         <label class="flex-1">
           验证码
@@ -104,6 +131,45 @@ label {
   flex-direction: column;
   gap: 0.375rem;
   font-size: 0.875rem;
+}
+
+.field-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 0.625rem;
+}
+
+.avatar-btn {
+  border: 2px solid transparent;
+  border-radius: 50%;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.avatar-btn.selected {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.avatar-btn img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 input[type='text'],

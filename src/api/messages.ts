@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { MessageItem, Paginated, PrivateReplyItem, PublicReplyItem } from '@/types/api'
+import type { MessageItem, Paginated, PrivateReplyItem, PublicReplyItem, SentPrivateMessageItem } from '@/types/api'
 
 export const getPublicMessages = (params?: { before?: string; limit?: number }) =>
   request<MessageItem[]>({
@@ -18,6 +18,13 @@ export const getPublicReplies = (params?: { before?: string; limit?: number }) =
 export const getPrivateReplies = (page = 1, pageSize = 20) =>
   request<Paginated<PrivateReplyItem>>({
     url: '/api/messages/private',
+    method: 'GET',
+    params: { page, pageSize },
+  })
+
+export const getSentPrivateMessages = (page = 1, pageSize = 20) =>
+  request<Paginated<SentPrivateMessageItem>>({
+    url: '/api/messages/private/sent',
     method: 'GET',
     params: { page, pageSize },
   })

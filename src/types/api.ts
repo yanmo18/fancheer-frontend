@@ -128,6 +128,13 @@ export interface PrivateReplyItem {
   createdAt: string
 }
 
+export interface SentPrivateMessageItem {
+  id: string
+  content: string
+  createdAt: string
+  hasReply: boolean
+}
+
 export interface Paginated<T> {
   list: T[]
   pagination: {
