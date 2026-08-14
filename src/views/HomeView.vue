@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import MusicPlayer from '@/components/MusicPlayer.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
+import BannerCarousel from '@/components/BannerCarousel.vue'
 import * as publicApi from '@/api/public'
 import { formatActivityRange, getActivityStatus } from '@/utils/activity'
 import type {
@@ -75,19 +76,7 @@ onMounted(async () => {
 
     <template v-else>
       <section v-if="banners.length" class="banner-hero">
-        <div class="banner-track">
-          <a
-            v-for="item in banners"
-            :key="item.id"
-            :href="item.linkUrl || '#'"
-            class="banner-slide"
-          >
-            <img :src="item.imageUrl" :alt="item.title" />
-            <div class="banner-caption">
-              <span>{{ item.title }}</span>
-            </div>
-          </a>
-        </div>
+        <BannerCarousel :banners="banners" />
       </section>
 
       <section v-if="streamer" class="hero">
@@ -214,42 +203,7 @@ onMounted(async () => {
 .banner-hero {
   margin: -0.875rem -1.5rem 1.5rem;
   background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 100%);
-  padding: 1rem 0 1.5rem;
-}
-
-.banner-track {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding: 0 1.5rem 0.5rem;
-  scrollbar-width: thin;
-}
-
-.banner-slide {
-  flex: 0 0 min(88%, 640px);
-  scroll-snap-align: start;
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  text-decoration: none;
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-}
-
-.banner-slide img {
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
-  display: block;
-}
-
-.banner-caption {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 2rem 1rem 0.875rem;
-  background: linear-gradient(transparent, rgba(15, 23, 42, 0.75));
-  font-weight: 600;
+  padding: 1rem 0 1.25rem;
 }
 
 .hero {

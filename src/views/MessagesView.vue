@@ -12,9 +12,13 @@ const publicReplies = ref<PublicReplyItem[]>([])
 const privateReplies = ref<PrivateReplyItem[]>([])
 const content = ref('')
 const loading = ref(true)
+const loadingMore = ref(false)
+const hasMoreMessages = ref(false)
 const sending = ref(false)
 const error = ref('')
 const success = ref('')
+
+const PAGE_SIZE = 20
 
 const reportTarget = ref<MessageItem | null>(null)
 const reportReason = ref('')
@@ -23,20 +27,47 @@ function isLiked(msg: MessageItem) {
   return msg.isLiked ?? msg.liked ?? false
 }
 
-async function loadPublic() {
-  loading.value = true
+function beforeCursor(items: MessageItem[]) {
+  const last = items[items.length - 1]
+  return last ? String(last.createdAt) : undefined
+}
+
+async function loadPublic(reset = true) {
+  if (reset) {
+    loading.value = true
+  }
   error.value = ''
   try {
-    const [msgList, replyList] = await Promise.all([
-      messagesApi.getPublicMessages({ limit: 20 }),
-      messagesApi.getPublicReplies({ limit: 10 }),
-    ])
+    const msgList = await messagesApi.getPublicMessages({ limit: PAGE_SIZE })
     messages.value = msgList
-    publicReplies.value = replyList
+    hasMoreMessages.value = msgList.length >= PAGE_SIZE
+    if (reset) {
+      publicReplies.value = await messagesApi.getPublicReplies({ limit: 10 })
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
-    loading.value = false
+    if (reset) {
+      loading.value = false
+    }
+  }
+}
+
+async function loadMoreMessages() {
+  if (!hasMoreMessages.value || loadingMore.value || !messages.value.length) return
+  loadingMore.value = true
+  error.value = ''
+  try {
+    const batch = await messagesApi.getPublicMessages({
+      before: beforeCursor(messages.value),
+      limit: PAGE_SIZE,
+    })
+    messages.value = [...messages.value, ...batch]
+    hasMoreMessages.value = batch.length >= PAGE_SIZE
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '加载更多失败'
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -55,7 +86,7 @@ async function loadPrivate() {
 
 async function load() {
   if (tab.value === 'public') {
-    await loadPublic()
+    await loadPublic(true)
   } else {
     await loadPrivate()
   }
@@ -207,6 +238,11 @@ onMounted(load)
           </article>
         </div>
         <p v-else class="muted empty">还没有公开留言，来抢沙发吧</p>
+        <div v-if="messages.length && hasMoreMessages" class="load-more-wrap">
+          <button type="button" class="btn btn-ghost" :disabled="loadingMore" @click="loadMoreMessages">
+            {{ loadingMore ? '加载中...' : '加载更多留言' }}
+          </button>
+        </div>
       </section>
     </template>
 
@@ -381,6 +417,12 @@ textarea {
 .empty {
   text-align: center;
   padding: 2rem 1rem;
+}
+
+.load-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
 }
 
 .success {
