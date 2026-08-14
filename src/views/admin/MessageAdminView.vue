@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import * as messageApi from '@/api/admin/message'
 import * as reportApi from '@/api/admin/report'
 import type { AdminMessageItem } from '@/api/admin/message'
-import type { AdminReportItem } from '@/api/admin/report'
+import type { AdminReportDetail, AdminReportItem } from '@/api/admin/report'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 
@@ -92,6 +92,40 @@ const replyTarget = ref<AdminMessageItem | null>(null)
 const replyContent = ref('')
 const showReplyForm = ref(false)
 
+const reportDetail = ref<AdminReportDetail | null>(null)
+const showReportDetail = ref(false)
+const detailLoading = ref(false)
+
+function messageTypeLabel(type: string) {
+  if (type === 'private') return '私密留言'
+  if (type === 'public') return '公开留言'
+  return type || '—'
+}
+
+function statusLabel(status: string) {
+  return status === 'resolved' ? '已办结' : '待处理'
+}
+
+async function openReportDetail(id: string) {
+  detailLoading.value = true
+  error.value = ''
+  showReportDetail.value = true
+  reportDetail.value = null
+  try {
+    reportDetail.value = await reportApi.getReportDetail(id)
+  } catch (e) {
+    showReportDetail.value = false
+    error.value = e instanceof Error ? e.message : '加载举报详情失败'
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function closeReportDetail() {
+  showReportDetail.value = false
+  reportDetail.value = null
+}
+
 function openReply(item: AdminMessageItem) {
   replyTarget.value = item
   replyContent.value = ''
@@ -155,6 +189,9 @@ async function resolveReport(id: string) {
   try {
     await reportApi.resolveReport(id)
     message.value = '工单已办结'
+    if (reportDetail.value?.id === id) {
+      closeReportDetail()
+    }
     await reloadCurrent()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '操作失败'
@@ -171,6 +208,9 @@ async function deleteViolation(id: string) {
   try {
     await reportApi.deleteViolationMessage(id)
     message.value = '违规留言已删除'
+    if (reportDetail.value?.id === id) {
+      closeReportDetail()
+    }
     await reloadCurrent()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '删除失败'
@@ -314,6 +354,7 @@ onMounted(load)
             <th>被举报内容</th>
             <th>发送者</th>
             <th>原因</th>
+            <th>状态</th>
             <th>时间</th>
             <th>操作</th>
           </tr>
@@ -324,19 +365,22 @@ onMounted(load)
             <td class="content">{{ item.messageContent }}</td>
             <td>{{ item.messageSenderNickname || '—' }}</td>
             <td>{{ item.reason }}</td>
+            <td>
+              <span class="status-badge" :class="item.status">{{ statusLabel(item.status) }}</span>
+            </td>
             <td>{{ formatDateTime(item.createdAt) }}</td>
             <td class="actions">
+              <button type="button" class="btn btn-ghost" @click="openReportDetail(item.id)">详情</button>
               <template v-if="item.status === 'pending'">
                 <button type="button" class="btn btn-ghost" @click="resolveReport(item.id)">办结</button>
                 <button type="button" class="btn btn-ghost danger" @click="deleteViolation(item.id)">
                   删留言
                 </button>
               </template>
-              <span v-else class="muted">已办结</span>
             </td>
           </tr>
           <tr v-if="!reports.length">
-            <td colspan="6" class="muted center">暂无数据</td>
+            <td colspan="7" class="muted center">暂无数据</td>
           </tr>
         </tbody>
       </table>
@@ -347,6 +391,67 @@ onMounted(load)
       <span class="muted">{{ page }} / {{ totalPages }}</span>
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
+    <div v-if="showReportDetail" class="modal-mask" @click.self="closeReportDetail">
+      <div class="card modal detail-modal">
+        <header class="detail-head">
+          <div>
+            <h2>举报详情</h2>
+            <p v-if="reportDetail" class="muted small">工单 #{{ reportDetail.id }}</p>
+          </div>
+          <button type="button" class="btn btn-ghost" @click="closeReportDetail">关闭</button>
+        </header>
+
+        <p v-if="detailLoading" class="muted">加载中...</p>
+
+        <template v-else-if="reportDetail">
+          <div class="detail-grid">
+            <section class="detail-block">
+              <h3>工单信息</h3>
+              <dl>
+                <div><dt>状态</dt><dd><span class="status-badge" :class="reportDetail.status">{{ statusLabel(reportDetail.status) }}</span></dd></div>
+                <div><dt>举报时间</dt><dd>{{ formatDateTime(reportDetail.createdAt) }}</dd></div>
+                <div v-if="reportDetail.resolvedAt"><dt>办结时间</dt><dd>{{ formatDateTime(reportDetail.resolvedAt) }}</dd></div>
+                <div><dt>同留言举报</dt><dd>{{ reportDetail.relatedReportCount }} 次</dd></div>
+              </dl>
+            </section>
+
+            <section class="detail-block">
+              <h3>举报人</h3>
+              <dl>
+                <div><dt>昵称</dt><dd>{{ reportDetail.reporterNickname || '—' }}</dd></div>
+                <div><dt>用户名</dt><dd>{{ reportDetail.reporterUsername || '—' }}</dd></div>
+                <div><dt>用户 ID</dt><dd>{{ reportDetail.reporterId }}</dd></div>
+              </dl>
+            </section>
+
+            <section class="detail-block full">
+              <h3>举报原因</h3>
+              <p class="quote">{{ reportDetail.reason || '（未填写）' }}</p>
+            </section>
+
+            <section class="detail-block full">
+              <h3>被举报留言</h3>
+              <dl>
+                <div><dt>类型</dt><dd>{{ messageTypeLabel(reportDetail.messageType) }}</dd></div>
+                <div><dt>发送者</dt><dd>{{ reportDetail.messageSenderNickname || '—' }}（{{ reportDetail.messageSenderUsername || '—' }}）</dd></div>
+                <div><dt>留言 ID</dt><dd>{{ reportDetail.messageId }}</dd></div>
+                <div v-if="reportDetail.messageCreatedAt"><dt>发送时间</dt><dd>{{ formatDateTime(reportDetail.messageCreatedAt) }}</dd></div>
+                <div><dt>点赞数</dt><dd>{{ reportDetail.messageLikeCount }}</dd></div>
+              </dl>
+              <p class="quote message-content">{{ reportDetail.messageContent || '（留言已不可见）' }}</p>
+            </section>
+          </div>
+
+          <div v-if="reportDetail.status === 'pending'" class="detail-actions">
+            <button type="button" class="btn btn-ghost" @click="resolveReport(reportDetail.id)">标记办结</button>
+            <button type="button" class="btn btn-ghost danger" @click="deleteViolation(reportDetail.id)">
+              删除违规留言
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <div v-if="showReplyForm && replyTarget" class="modal-mask" @click.self="closeReply">
       <form class="card modal" @submit.prevent="submitReply">
         <h2>{{ mainTab === 'private' ? '私密回复' : '公开回复' }}</h2>
@@ -528,5 +633,101 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.detail-modal {
+  max-width: 640px;
+}
+
+.detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.detail-head h2 {
+  margin: 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.detail-block {
+  padding: 0.875rem;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.detail-block.full {
+  grid-column: 1 / -1;
+}
+
+.detail-block h3 {
+  margin: 0 0 0.625rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.detail-block dl {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.detail-block dl > div {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.detail-block dt {
+  color: var(--text-muted);
+}
+
+.detail-block dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.message-content {
+  margin-top: 0.75rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-badge.resolved {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
