@@ -27,6 +27,7 @@ const router = createRouter({
         { path: 'activities', name: 'admin-activities', component: () => import('@/views/admin/ActivityAdminView.vue') },
         { path: 'gallery', name: 'admin-gallery', component: () => import('@/views/admin/GalleryAdminView.vue') },
         { path: 'awards', name: 'admin-awards', component: () => import('@/views/admin/AwardAdminView.vue') },
+        { path: 'graph', name: 'admin-graph', component: () => import('@/views/admin/GraphAdminView.vue') },
         { path: 'users', name: 'admin-users', component: () => import('@/views/admin/UserAdminView.vue') },
         { path: 'messages', name: 'admin-messages', component: () => import('@/views/admin/MessageAdminView.vue') },
         { path: 'sensitive-words', name: 'admin-sensitive-words', component: () => import('@/views/admin/SensitiveWordAdminView.vue') },

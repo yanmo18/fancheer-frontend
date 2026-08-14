@@ -29,3 +29,17 @@ export const getPrivateMessages = (page = 1, pageSize = 20, userId?: string) =>
 
 export const deleteMessage = (id: string) =>
   request<null>({ url: `/api/admin/messages/${id}`, method: 'DELETE' })
+
+export const streamerReply = (messageId: string, content: string) =>
+  request<{ id: string }>({
+    url: `/api/messages/${messageId}/streamer-reply`,
+    method: 'POST',
+    data: { content },
+  })
+
+export const privateReply = (messageId: string, content: string) =>
+  request<{ id: string }>({
+    url: `/api/messages/${messageId}/private-reply`,
+    method: 'POST',
+    data: { content },
+  })

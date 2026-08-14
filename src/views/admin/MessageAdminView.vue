@@ -88,6 +88,49 @@ async function reloadCurrent() {
   }
 }
 
+const replyTarget = ref<AdminMessageItem | null>(null)
+const replyContent = ref('')
+const showReplyForm = ref(false)
+
+function openReply(item: AdminMessageItem) {
+  replyTarget.value = item
+  replyContent.value = ''
+  showReplyForm.value = true
+}
+
+function closeReply() {
+  replyTarget.value = null
+  replyContent.value = ''
+  showReplyForm.value = false
+}
+
+async function submitReply() {
+  if (!replyTarget.value) return
+  const text = replyContent.value.trim()
+  if (!text) {
+    error.value = '请填写回复内容'
+    return
+  }
+  loading.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    if (mainTab.value === 'private') {
+      await messageApi.privateReply(replyTarget.value.id, text)
+      message.value = '私密回复已发送'
+    } else {
+      await messageApi.streamerReply(replyTarget.value.id, text)
+      message.value = '公开回复已发布'
+    }
+    closeReply()
+    await reloadCurrent()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '回复失败'
+  } finally {
+    loading.value = false
+  }
+}
+
 async function removeMessage(id: string) {
   if (!confirm('确定删除这条留言？')) return
   loading.value = true
@@ -176,7 +219,7 @@ onMounted(load)
     <header class="page-header">
       <div>
         <h1>留言与举报</h1>
-        <p class="muted">审核公开留言、处理举报工单{{ isStreamer ? '，查看私密留言' : '' }}</p>
+        <p class="muted">审核公开留言、处理举报工单{{ isStreamer ? '，回复留言' : '' }}</p>
       </div>
     </header>
 
@@ -243,7 +286,17 @@ onMounted(load)
             <td>{{ item.likeCount }}</td>
             <td>{{ formatDateTime(item.createdAt) }}</td>
             <td>
-              <button type="button" class="btn btn-ghost danger" @click="removeMessage(item.id)">删除</button>
+              <div class="actions">
+                <button
+                  v-if="isStreamer"
+                  type="button"
+                  class="btn btn-ghost"
+                  @click="openReply(item)"
+                >
+                  回复
+                </button>
+                <button type="button" class="btn btn-ghost danger" @click="removeMessage(item.id)">删除</button>
+              </div>
             </td>
           </tr>
           <tr v-if="!messages.length">
@@ -293,6 +346,27 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page <= 1" @click="prevPage">上一页</button>
       <span class="muted">{{ page }} / {{ totalPages }}</span>
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
+    </div>
+    <div v-if="showReplyForm && replyTarget" class="modal-mask" @click.self="closeReply">
+      <form class="card modal" @submit.prevent="submitReply">
+        <h2>{{ mainTab === 'private' ? '私密回复' : '公开回复' }}</h2>
+        <p class="muted quote">原留言：{{ replyTarget.content }}</p>
+        <p class="muted small">发送者：{{ replyTarget.senderNickname }}</p>
+        <label>
+          回复内容 *
+          <textarea
+            v-model="replyContent"
+            rows="4"
+            maxlength="500"
+            :placeholder="mainTab === 'private' ? '仅该用户可见' : '所有人可见，会显示在留言板「博主回复」'"
+            required
+          />
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" @click="closeReply">取消</button>
+          <button type="submit" class="btn btn-primary" :disabled="loading">发送回复</button>
+        </div>
+      </form>
     </div>
   </div>
 </template>
@@ -398,5 +472,61 @@ td {
 .success {
   color: #16a34a;
   margin-bottom: 0.5rem;
+}
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.modal {
+  width: 100%;
+  max-width: 480px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.quote {
+  margin: 0;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  word-break: break-word;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+}
+
+textarea {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style>

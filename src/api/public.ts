@@ -4,6 +4,7 @@ import type {
   AwardItem,
   BannerItem,
   GalleryItem,
+  GraphData,
   SongItem,
   StreamerInfo,
 } from '@/types/api'
@@ -30,21 +31,6 @@ export const getGallery = (category?: string) =>
     params: category ? { category } : undefined,
   })
 
-export interface GraphData {
-  characters: Array<{
-    id: string
-    name: string
-    avatarUrl?: string
-    bio?: string
-    isCenter: boolean
-  }>
-  relations: Array<{
-    id: string
-    fromCharacterId: string
-    toCharacterId: string
-    relationLabel: string
-  }>
-}
 
 export const getGraph = () =>
   request<GraphData>({ url: '/api/graph', method: 'GET' })

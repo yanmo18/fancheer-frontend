@@ -15,6 +15,8 @@ const actionLabels: Record<string, string> = {
   unban_user: '解封用户',
   promote_admin: '设为协管员',
   demote_admin: '取消协管员',
+  create_private_reply: '私密回复留言',
+  create_streamer_reply: '公开回复留言',
   delete_message: '删除留言',
   create_avatar: '新增头像',
   delete_avatar: '删除头像',
@@ -26,6 +28,12 @@ const actionLabels: Record<string, string> = {
   create_award: '新增荣誉',
   update_award: '更新荣誉',
   delete_award: '删除荣誉',
+  create_graph_character: '新增图谱人物',
+  update_graph_character: '更新图谱人物',
+  delete_graph_character: '删除图谱人物',
+  create_graph_relation: '新增图谱关系',
+  update_graph_relation: '更新图谱关系',
+  delete_graph_relation: '删除图谱关系',
 }
 
 function actionLabel(action: string) {

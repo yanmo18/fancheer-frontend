@@ -74,6 +74,28 @@ export interface GalleryItem {
   title?: string
 }
 
+export interface GraphCharacter {
+  id: string
+  name: string
+  avatarUrl?: string
+  bio?: string
+  isCenter: boolean
+  sortOrder?: number
+}
+
+export interface GraphRelation {
+  id: string
+  fromCharacterId: string
+  toCharacterId: string
+  relationLabel: string
+  sortOrder?: number
+}
+
+export interface GraphData {
+  characters: GraphCharacter[]
+  relations: GraphRelation[]
+}
+
 export interface MessageItem {
   id: string
   content: string

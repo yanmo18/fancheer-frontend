@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import MusicPlayer from '@/components/MusicPlayer.vue'
+import GraphViewer from '@/components/GraphViewer.vue'
 import * as publicApi from '@/api/public'
 import { formatActivityRange, getActivityStatus } from '@/utils/activity'
 import type {
@@ -8,6 +9,7 @@ import type {
   AwardItem,
   BannerItem,
   GalleryItem,
+  GraphData,
   SongItem,
   StreamerInfo,
 } from '@/types/api'
@@ -21,6 +23,7 @@ const songs = ref<SongItem[]>([])
 const activities = ref<ActivityItem[]>([])
 const galleryAnime = ref<GalleryItem[]>([])
 const galleryReal = ref<GalleryItem[]>([])
+const graphData = ref<GraphData | null>(null)
 const galleryTab = ref<'anime' | 'real'>('anime')
 const previewImage = ref<string | null>(null)
 
@@ -38,7 +41,7 @@ function closePreview() {
 
 onMounted(async () => {
   try {
-    const [info, bannerList, awardList, songList, activityList, anime, real] = await Promise.all([
+    const [info, bannerList, awardList, songList, activityList, anime, real, graph] = await Promise.all([
       publicApi.getStreamerInfo(),
       publicApi.getBanners(),
       publicApi.getAwards(),
@@ -46,6 +49,7 @@ onMounted(async () => {
       publicApi.getActivities(),
       publicApi.getGallery('anime'),
       publicApi.getGallery('real'),
+      publicApi.getGraph(),
     ])
     streamer.value = info
     banners.value = bannerList
@@ -54,6 +58,7 @@ onMounted(async () => {
     activities.value = activityList
     galleryAnime.value = anime
     galleryReal.value = real
+    graphData.value = graph.characters.length ? graph : null
     galleryTab.value = anime.length ? 'anime' : 'real'
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
@@ -97,6 +102,14 @@ onMounted(async () => {
             <p class="bio">{{ streamer.bio }}</p>
           </div>
         </div>
+      </section>
+
+      <section v-if="graphData" class="section">
+        <div class="section-head">
+          <h2>关系图谱</h2>
+          <span class="count">{{ graphData.characters.length }} 人 · {{ graphData.relations.length }} 条关系</span>
+        </div>
+        <GraphViewer :data="graphData" />
       </section>
 
       <section v-if="songs.length" class="section">

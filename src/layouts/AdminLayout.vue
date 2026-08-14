@@ -28,6 +28,7 @@ const sidebarOpen = ref(false)
         <RouterLink to="/admin/activities">活动</RouterLink>
         <RouterLink to="/admin/gallery">图集</RouterLink>
         <RouterLink to="/admin/awards">荣誉</RouterLink>
+        <RouterLink to="/admin/graph">关系图谱</RouterLink>
         <RouterLink to="/admin/users">用户</RouterLink>
         <RouterLink to="/admin/messages">留言</RouterLink>
         <RouterLink to="/admin/sensitive-words">敏感词</RouterLink>

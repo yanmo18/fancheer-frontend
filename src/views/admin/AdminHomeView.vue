@@ -34,6 +34,10 @@ const auth = useAuthStore()
         <strong>荣誉管理</strong>
         <p class="muted">获奖记录、配图与日期</p>
       </RouterLink>
+      <RouterLink to="/admin/graph" class="card item link-card">
+        <strong>关系图谱</strong>
+        <p class="muted">人物节点、关系连线与中心节点</p>
+      </RouterLink>
       <RouterLink to="/admin/users" class="card item link-card">
         <strong>用户管理</strong>
         <p class="muted">用户列表、封禁 / 解封、协管员设置</p>
