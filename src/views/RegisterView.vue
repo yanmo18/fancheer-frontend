@@ -95,7 +95,8 @@ async function submit() {
       </div>
       <label class="checkbox">
         <input v-model="agreement" type="checkbox" />
-        我已阅读并同意用户协议
+        我已阅读并同意
+        <RouterLink to="/terms" target="_blank" class="terms-link">用户协议</RouterLink>
       </label>
       <p v-if="error" class="error">{{ error }}</p>
       <button type="submit" class="btn btn-primary" :disabled="loading">
@@ -202,5 +203,11 @@ input[type='password'] {
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.terms-link {
+  color: var(--primary);
+  text-decoration: underline;
 }
 </style>

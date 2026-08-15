@@ -4,6 +4,7 @@ import MusicPlayer from '@/components/MusicPlayer.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
 import * as publicApi from '@/api/public'
+import { setPageMeta } from '@/utils/seo'
 import { formatActivityRange, getActivityStatus } from '@/utils/activity'
 import type {
   ActivityItem,
@@ -61,6 +62,13 @@ onMounted(async () => {
     galleryReal.value = real
     graphData.value = graph.characters.length ? graph : null
     galleryTab.value = anime.length ? 'anime' : 'real'
+    if (info.name) {
+      setPageMeta({
+        title: info.name,
+        description: info.bio?.slice(0, 120) || undefined,
+        path: '/',
+      })
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
