@@ -1,12 +1,32 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useTheme } from '@/composables/useTheme'
+import * as publicApi from '@/api/public'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const menuOpen = ref(false)
+const siteName = ref('Fancheer')
+const siteSub = ref('博主个人展示站')
+
+const { themeIcon, themeLabel, toggleTheme } = useTheme()
+
+onMounted(async () => {
+  try {
+    const info = await publicApi.getStreamerInfo()
+    if (info.name) siteName.value = info.name
+    if (info.tags?.length) {
+      const tags = Array.isArray(info.tags) ? info.tags : [info.tags]
+      siteSub.value = tags.slice(0, 2).join(' · ')
+    }
+  } catch {
+    /* keep defaults */
+  }
+})
 
 async function handleLogout() {
   menuOpen.value = false
@@ -17,140 +37,129 @@ async function handleLogout() {
 function closeMenu() {
   menuOpen.value = false
 }
+
+function navActive(path: string) {
+  if (path === '/') return route.path === '/'
+  return route.path.startsWith(path)
+}
+
+const avatarInitial = () =>
+  (auth.user?.nickname || auth.user?.username || '?').slice(0, 1).toUpperCase()
 </script>
 
 <template>
-  <header class="header">
-    <RouterLink to="/" class="logo" @click="closeMenu">Fancheer</RouterLink>
+  <nav class="top-nav">
+    <RouterLink to="/" class="nav-brand" @click="closeMenu">
+      <span class="nav-logo-text">{{ siteName }}</span>
+      <span class="nav-logo-sub">{{ siteSub }}</span>
+    </RouterLink>
 
-    <button
-      type="button"
-      class="menu-btn"
-      aria-label="打开菜单"
-      @click="menuOpen = !menuOpen"
-    >
+    <button type="button" class="nav-mobile-toggle" aria-label="菜单" @click="menuOpen = !menuOpen">
       {{ menuOpen ? '✕' : '☰' }}
     </button>
 
-    <nav class="nav" :class="{ open: menuOpen }">
-      <RouterLink to="/" @click="closeMenu">首页</RouterLink>
-      <RouterLink to="/messages" @click="closeMenu">留言</RouterLink>
-      <RouterLink v-if="auth.isLoggedIn" to="/profile" @click="closeMenu">我的</RouterLink>
-      <RouterLink v-if="auth.isLoggedIn" to="/checkin" @click="closeMenu">打卡</RouterLink>
-      <RouterLink v-if="auth.isAdmin" to="/admin" @click="closeMenu">管理</RouterLink>
-    </nav>
+    <div class="nav-links" :class="{ open: menuOpen }">
+      <RouterLink to="/" class="nav-link" :class="{ active: navActive('/') && route.path === '/' }" @click="closeMenu">
+        首页
+      </RouterLink>
+      <RouterLink to="/messages" class="nav-link" :class="{ active: navActive('/messages') }" @click="closeMenu">
+        聊天室
+      </RouterLink>
+      <RouterLink
+        v-if="auth.isLoggedIn"
+        to="/profile"
+        class="nav-link"
+        :class="{ active: navActive('/profile') || navActive('/checkin') }"
+        @click="closeMenu"
+      >
+        个人中心
+      </RouterLink>
+      <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link" :class="{ active: navActive('/admin') }" @click="closeMenu">
+        管理
+      </RouterLink>
+    </div>
 
-    <div class="auth-actions" :class="{ open: menuOpen }">
+    <div class="nav-right" :class="{ open: menuOpen }">
+      <button type="button" class="theme-toggle" @click="toggleTheme">
+        <span class="theme-toggle-icon">{{ themeIcon }}</span>
+        <span>{{ themeLabel }}</span>
+      </button>
+
       <template v-if="auth.isLoggedIn">
-        <img
-          v-if="auth.user?.avatar || auth.user?.avatarUrl"
-          :src="auth.user.avatar || auth.user.avatarUrl"
-          alt=""
-          class="user-avatar"
-        />
-        <span class="user-tag">{{ auth.user?.nickname || auth.user?.username }}</span>
-        <button type="button" class="btn btn-ghost" @click="handleLogout">退出</button>
+        <RouterLink to="/profile" class="nav-avatar nav-avatar-link" @click="closeMenu">
+          <img
+            v-if="auth.user?.avatar || auth.user?.avatarUrl"
+            :src="auth.user.avatar || auth.user.avatarUrl"
+            alt=""
+            class="nav-avatar-img"
+          />
+          <span v-else>{{ avatarInitial() }}</span>
+        </RouterLink>
+        <button type="button" class="btn btn-ghost btn-sm nav-logout" @click="handleLogout">退出</button>
       </template>
       <template v-else>
-        <RouterLink to="/login" class="btn btn-ghost" @click="closeMenu">登录</RouterLink>
-        <RouterLink to="/register" class="btn btn-primary" @click="closeMenu">注册</RouterLink>
+        <RouterLink to="/login" class="btn btn-ghost btn-sm" @click="closeMenu">登录</RouterLink>
+        <RouterLink to="/register" class="btn btn-primary btn-sm" @click="closeMenu">注册</RouterLink>
       </template>
     </div>
 
-    <div v-if="menuOpen" class="backdrop" @click="closeMenu" />
-  </header>
+    <div v-if="menuOpen" class="nav-backdrop" @click="closeMenu" />
+  </nav>
 </template>
 
 <style scoped>
-.header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.logo {
-  font-weight: 700;
-  font-size: 1.125rem;
-  color: var(--primary);
+.nav-brand {
   text-decoration: none;
-  z-index: 22;
+  color: inherit;
 }
 
-.menu-btn {
+.nav-mobile-toggle {
   display: none;
   margin-left: auto;
   width: 2.5rem;
   height: 2.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--bg-card);
+  color: var(--text-primary);
   cursor: pointer;
-  font-size: 1rem;
-  z-index: 22;
+  z-index: 102;
 }
 
-.nav {
-  display: flex;
-  gap: 1rem;
-  flex: 1;
-}
-
-.nav a {
-  color: var(--text-muted);
+.nav-avatar-link {
   text-decoration: none;
-  font-size: 0.9375rem;
-}
-
-.nav a.router-link-active {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.auth-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.user-tag {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  max-width: 8rem;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.nav-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.nav-logout {
   white-space: nowrap;
 }
 
-.backdrop {
+.nav-backdrop {
   display: none;
 }
 
-@media (max-width: 768px) {
-  .menu-btn {
+@media (max-width: 900px) {
+  .nav-mobile-toggle {
     display: grid;
     place-items: center;
   }
 
-  .nav,
-  .auth-actions {
+  .nav-links,
+  .nav-right {
     position: fixed;
     left: 0;
     right: 0;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    background: var(--nav-bg);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border-subtle);
     padding: 0.75rem 1rem;
     flex-direction: column;
     align-items: stretch;
@@ -159,38 +168,38 @@ function closeMenu() {
     opacity: 0;
     pointer-events: none;
     transition: transform 0.2s, opacity 0.2s;
-    z-index: 21;
+    z-index: 101;
   }
 
-  .nav {
-    top: 57px;
+  .nav-links {
+    top: 60px;
   }
 
-  .auth-actions {
-    top: calc(57px + 9.5rem);
-    border-top: none;
+  .nav-right {
+    top: calc(60px + 11rem);
     flex-direction: row;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    border-top: none;
   }
 
-  .nav.open,
-  .auth-actions.open {
+  .nav-links.open,
+  .nav-right.open {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;
   }
 
-  .nav a {
-    padding: 0.625rem 0.25rem;
+  .nav-link {
+    text-align: left;
   }
 
-  .backdrop {
+  .nav-backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.35);
-    z-index: 19;
+    top: 60px;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 99;
   }
 }
 </style>

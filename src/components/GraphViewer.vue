@@ -85,7 +85,7 @@ const selectedRelations = computed(() => {
 </script>
 
 <template>
-  <div v-if="data.characters.length" class="graph-viewer">
+  <div v-if="data.characters.length" class="graph-wrapper graph-viewer">
     <div class="graph-canvas">
       <svg viewBox="0 0 800 520" class="graph-svg" aria-hidden="true">
         <defs>
@@ -201,12 +201,15 @@ const selectedRelations = computed(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 240px;
   gap: 1.5rem;
-  align-items: start;
+  align-items: stretch;
+  height: auto;
+  min-height: 480px;
+  padding: 1rem;
 }
 
 .graph-canvas {
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
-  border: 1px solid #e2e8f0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -218,17 +221,17 @@ const selectedRelations = computed(() => {
 }
 
 .edge-line {
-  stroke: #cbd5e1;
+  stroke: var(--border-medium);
   stroke-width: 2;
 }
 
 .edge-label-bg {
-  fill: rgba(255, 255, 255, 0.92);
-  stroke: #e2e8f0;
+  fill: var(--bg-card);
+  stroke: var(--border-subtle);
 }
 
 .edge-label {
-  fill: #64748b;
+  fill: var(--text-muted);
   font-size: 12px;
 }
 
@@ -237,34 +240,34 @@ const selectedRelations = computed(() => {
 }
 
 .node-ring {
-  fill: #fff;
-  stroke: #e2e8f0;
+  fill: var(--bg-card);
+  stroke: var(--border-medium);
   stroke-width: 3;
 }
 
 .graph-node--center .node-ring {
-  stroke: #6366f1;
+  stroke: var(--accent-primary);
   stroke-width: 4;
 }
 
 .graph-node--selected .node-ring {
-  stroke: #f59e0b;
+  stroke: var(--gold);
 }
 
 .node-placeholder {
-  fill: #cbd5e1;
+  fill: var(--bg-elevated);
 }
 
 .node-name {
-  fill: #1e293b;
+  fill: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
   pointer-events: none;
 }
 
 .graph-detail {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   padding: 1rem;
 }

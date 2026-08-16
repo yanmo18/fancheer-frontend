@@ -29,61 +29,35 @@ async function submit() {
 
 <template>
   <div class="auth-page">
-    <form class="card auth-card" @submit.prevent="submit">
-      <h1>登录</h1>
-      <p class="muted">注册访客登录后可留言、打卡</p>
-      <label>
-        用户名
-        <input v-model="username" required autocomplete="username" />
-      </label>
-      <label>
-        密码
-        <input v-model="password" type="password" required autocomplete="current-password" />
-      </label>
+    <form class="auth-card" @submit.prevent="submit">
+      <div class="auth-brand">
+        <div class="auth-brand-name">欢迎回来</div>
+        <div class="auth-brand-desc">登录后可留言、打卡与互动</div>
+      </div>
+
+      <div class="auth-field">
+        <label class="auth-label">用户名</label>
+        <input v-model="username" class="auth-input" required autocomplete="username" />
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">密码</label>
+        <input
+          v-model="password"
+          class="auth-input"
+          type="password"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" class="btn btn-primary" :disabled="loading">
+      <button type="submit" class="auth-submit" :disabled="loading">
         {{ loading ? '登录中...' : '登录' }}
       </button>
-      <p class="muted">
+      <p class="auth-footer">
         还没有账号？
         <RouterLink to="/register">去注册</RouterLink>
       </p>
     </form>
   </div>
 </template>
-
-<style scoped>
-.auth-page {
-  min-height: calc(100vh - 120px);
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 400px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-
-.auth-card h1 {
-  margin: 0;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-}
-
-input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: inherit;
-}
-</style>

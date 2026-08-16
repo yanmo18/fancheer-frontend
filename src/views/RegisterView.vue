@@ -27,7 +27,7 @@ onMounted(async () => {
   try {
     avatars.value = await authApi.getRegisterAvatars()
   } catch {
-    // 无预设头像时仍可注册
+    /* optional avatars */
   }
 })
 
@@ -59,25 +59,29 @@ async function submit() {
 
 <template>
   <div class="auth-page">
-    <form class="card auth-card" @submit.prevent="submit">
-      <h1>注册</h1>
-      <label>
-        用户名
-        <input v-model="username" required />
-      </label>
-      <label>
-        密码
-        <input v-model="password" type="password" required />
-      </label>
+    <form class="auth-card" @submit.prevent="submit">
+      <div class="auth-brand">
+        <div class="auth-brand-name">加入社区</div>
+        <div class="auth-brand-desc">注册成为访客，参与留言与打卡</div>
+      </div>
 
-      <div v-if="avatars.length" class="avatar-section">
-        <span class="field-label">选择头像（可选）</span>
-        <div class="avatar-grid">
+      <div class="auth-field">
+        <label class="auth-label">用户名</label>
+        <input v-model="username" class="auth-input" required />
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">密码</label>
+        <input v-model="password" class="auth-input" type="password" required />
+      </div>
+
+      <div v-if="avatars.length" class="auth-field">
+        <label class="auth-label">选择头像（可选）</label>
+        <div class="avatar-options">
           <button
             v-for="item in avatars"
             :key="item.id"
             type="button"
-            class="avatar-btn"
+            class="avatar-option"
             :class="{ selected: selectedAvatarId === item.id }"
             @click="selectedAvatarId = selectedAvatarId === item.id ? '' : item.id"
           >
@@ -86,23 +90,27 @@ async function submit() {
         </div>
       </div>
 
-      <div class="captcha-row">
-        <label class="flex-1">
-          验证码
-          <input v-model="captchaText" required />
-        </label>
-        <div class="captcha-box" v-html="captchaSvg" @click="loadCaptcha" title="点击刷新" />
+      <div class="auth-field">
+        <label class="auth-label">验证码</label>
+        <div class="auth-captcha-row">
+          <input v-model="captchaText" class="auth-input" required />
+          <div class="auth-captcha-box" v-html="captchaSvg" title="点击刷新" @click="loadCaptcha" />
+        </div>
       </div>
-      <label class="checkbox">
-        <input v-model="agreement" type="checkbox" />
-        我已阅读并同意
-        <RouterLink to="/terms" target="_blank" class="terms-link">用户协议</RouterLink>
-      </label>
+
+      <div class="auth-checkbox-row">
+        <input v-model="agreement" class="auth-checkbox" type="checkbox" id="agreement" />
+        <label for="agreement" class="auth-agreement">
+          我已阅读并同意
+          <RouterLink to="/terms" target="_blank">用户协议</RouterLink>
+        </label>
+      </div>
+
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" class="btn btn-primary" :disabled="loading">
+      <button type="submit" class="auth-submit" :disabled="loading">
         {{ loading ? '提交中...' : '注册' }}
       </button>
-      <p class="muted">
+      <p class="auth-footer">
         已有账号？
         <RouterLink to="/login">去登录</RouterLink>
       </p>
@@ -111,103 +119,31 @@ async function submit() {
 </template>
 
 <style scoped>
-.auth-page {
-  min-height: calc(100vh - 120px);
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 400px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-}
-
-.field-label {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-.avatar-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.avatar-grid {
+.avatar-options {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
   gap: 0.625rem;
 }
 
-.avatar-btn {
+.avatar-option {
   border: 2px solid transparent;
   border-radius: 50%;
   padding: 0;
   background: none;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
+  transition: border-color 0.2s, transform 0.2s;
 }
 
-.avatar-btn.selected {
-  border-color: var(--primary);
+.avatar-option.selected {
+  border-color: var(--accent-primary);
   transform: scale(1.05);
 }
 
-.avatar-btn img {
+.avatar-option img {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
-}
-
-input[type='text'],
-input[type='password'] {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: inherit;
-}
-
-.captcha-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-end;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-.captcha-box {
-  cursor: pointer;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  height: 40px;
-}
-
-.checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.terms-link {
-  color: var(--primary);
-  text-decoration: underline;
 }
 </style>

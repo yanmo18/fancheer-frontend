@@ -79,14 +79,14 @@ onMounted(loadCalendar)
 </script>
 
 <template>
-  <div class="page">
-    <h1>每日打卡</h1>
-    <p class="muted">记录你来访的每一天</p>
+  <div class="user-page checkin-page">
+    <div class="user-card user-card-full">
+      <h2 class="user-card-title"><span class="user-card-title-icon">📅</span>每日打卡</h2>
+      <p class="muted checkin-desc">记录你来访的每一天</p>
 
-    <div class="card section action-card">
       <button
         type="button"
-        class="btn btn-primary"
+        class="user-btn user-btn-primary checkin-btn"
         :disabled="checking || loading || checkedToday"
         @click="doCheckin"
       >
@@ -96,7 +96,7 @@ onMounted(loadCalendar)
       <p v-if="error" class="error">{{ error }}</p>
     </div>
 
-    <div class="card section calendar-card">
+    <div class="user-card user-card-full calendar-card">
       <div class="calendar-head">
         <button type="button" class="btn btn-ghost month-btn" @click="changeMonth(-1)">‹</button>
         <div class="month-title">
@@ -138,21 +138,20 @@ onMounted(loadCalendar)
 </template>
 
 <style scoped>
-.page {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 1.5rem;
+.checkin-page {
+  max-width: 520px;
 }
 
-.section {
-  padding: 1rem;
-  margin-bottom: 1rem;
+.checkin-desc {
+  margin: -0.5rem 0 1rem;
 }
 
-.action-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.checkin-btn {
+  align-self: flex-start;
+}
+
+.calendar-card {
+  margin-top: 1.5rem;
 }
 
 .calendar-head {
@@ -213,8 +212,8 @@ onMounted(loadCalendar)
   display: grid;
   place-items: center;
   font-size: 0.875rem;
-  color: #334155;
-  background: #f8fafc;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
 }
 
 .day-cell.empty {
@@ -222,17 +221,17 @@ onMounted(loadCalendar)
 }
 
 .day-cell.checked {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(125, 159, 122, 0.15);
+  color: var(--success);
   font-weight: 700;
 }
 
 .day-cell.today {
-  box-shadow: inset 0 0 0 2px var(--primary);
+  box-shadow: inset 0 0 0 2px var(--accent-primary);
 }
 
 .day-cell.future:not(.checked) {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .legend {
@@ -257,13 +256,13 @@ onMounted(loadCalendar)
 }
 
 .dot.checked {
-  background: #dcfce7;
-  box-shadow: inset 0 0 0 2px #16a34a;
+  background: rgba(125, 159, 122, 0.2);
+  box-shadow: inset 0 0 0 2px var(--success);
 }
 
 .dot.today {
-  background: #fff;
-  box-shadow: inset 0 0 0 2px var(--primary);
+  background: var(--bg-card);
+  box-shadow: inset 0 0 0 2px var(--accent-primary);
 }
 
 .center {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import * as userApi from '@/api/user'
 import type { UserRole } from '@/types/api'
@@ -64,149 +65,143 @@ async function pickAvatar(id: string) {
 </script>
 
 <template>
-  <div class="page">
-    <h1>个人中心</h1>
-
-    <div class="card section profile-head">
-      <img
-        v-if="currentAvatarUrl"
-        :src="currentAvatarUrl"
-        alt=""
-        class="current-avatar"
-      />
-      <div v-else class="current-avatar fallback">{{ nickname.slice(0, 1) || '?' }}</div>
-      <div>
-        <strong>{{ auth.user?.nickname || auth.user?.username }}</strong>
-        <p class="muted">@{{ auth.user?.username }}</p>
-      </div>
-    </div>
-
-    <div class="card section">
-      <h2>基本信息</h2>
-      <p class="muted">角色：{{ auth.user?.role ? roleLabels[auth.user.role] : '—' }}</p>
-      <label>
-        展示昵称
-        <input v-model="nickname" maxlength="10" />
-      </label>
-      <button type="button" class="btn btn-primary" :disabled="loading" @click="saveNickname">
-        保存昵称
-      </button>
-    </div>
-
-    <div class="card section">
-      <h2>选择头像</h2>
-      <p v-if="!avatars.length" class="muted">暂无预设头像，请联系博主添加</p>
-      <div v-else class="avatar-grid">
-        <button
-          v-for="item in avatars"
-          :key="item.id"
-          type="button"
-          class="avatar-btn"
-          :class="{ selected: selectedAvatarId === item.id }"
-          :disabled="loading"
-          @click="pickAvatar(item.id)"
-        >
-          <img :src="item.url" alt="" />
+  <div class="user-page">
+    <div class="user-layout">
+      <section class="user-card user-card-full">
+        <h2 class="user-card-title"><span class="user-card-title-icon">👤</span>个人资料</h2>
+        <div class="user-profile-head">
+          <div class="user-profile-avatar">
+            <img v-if="currentAvatarUrl" :src="currentAvatarUrl" alt="" />
+            <span v-else>{{ (nickname || auth.user?.username || '?').slice(0, 1) }}</span>
+          </div>
+          <div>
+            <div class="user-profile-name">{{ auth.user?.nickname || auth.user?.username }}</div>
+            <div class="user-profile-handle muted">@{{ auth.user?.username }}</div>
+          </div>
+        </div>
+        <div class="user-row">
+          <span class="user-row-label">角色</span>
+          <span class="user-row-value">{{ auth.user?.role ? roleLabels[auth.user.role] : '—' }}</span>
+        </div>
+        <div class="user-row">
+          <span class="user-row-label">展示昵称</span>
+          <input v-model="nickname" class="user-text-input" maxlength="10" />
+        </div>
+        <button type="button" class="user-btn user-btn-primary" :disabled="loading" @click="saveNickname">
+          保存昵称
         </button>
-      </div>
+      </section>
+
+      <section class="user-card user-card-wide">
+        <h2 class="user-card-title"><span class="user-card-title-icon">🎭</span>选择头像</h2>
+        <p v-if="!avatars.length" class="muted">暂无预设头像，请联系博主添加</p>
+        <div v-else class="avatar-options">
+          <button
+            v-for="item in avatars"
+            :key="item.id"
+            type="button"
+            class="avatar-option"
+            :class="{ selected: selectedAvatarId === item.id }"
+            :disabled="loading"
+            @click="pickAvatar(item.id)"
+          >
+            <img :src="item.url" alt="" />
+          </button>
+        </div>
+      </section>
+
+      <section class="user-card user-card-third">
+        <h2 class="user-card-title"><span class="user-card-title-icon">📅</span>快捷入口</h2>
+        <RouterLink to="/checkin" class="user-quick-link">每日打卡 →</RouterLink>
+        <RouterLink to="/messages" class="user-quick-link">聊天室 →</RouterLink>
+      </section>
     </div>
 
-    <p v-if="message" class="success">{{ message }}</p>
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="message" class="success user-flash">{{ message }}</p>
+    <p v-if="error" class="error user-flash">{{ error }}</p>
   </div>
 </template>
 
 <style scoped>
-.page {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem;
-}
-
-.section {
-  padding: 1rem;
-  margin-bottom: 1rem;
+.user-profile-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.section h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.profile-head {
-  flex-direction: row;
   align-items: center;
   gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
-.current-avatar {
+.user-profile-avatar {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  object-fit: cover;
+  overflow: hidden;
+  background: var(--accent-gradient);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
-.current-avatar.fallback {
-  display: grid;
-  place-items: center;
-  background: #e0e7ff;
-  color: var(--primary);
+.user-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-profile-name {
+  font-family: 'Cormorant Garamond', serif;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+.user-profile-handle {
   font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 
-input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: inherit;
+.user-quick-link {
+  display: block;
+  padding: 0.75rem 0;
+  color: var(--accent-primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.avatar-grid {
+.user-quick-link:last-child {
+  border-bottom: none;
+}
+
+.user-flash {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 48px 1rem;
+}
+
+.avatar-options {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
   gap: 0.75rem;
 }
 
-.avatar-btn {
+.avatar-option {
   border: 2px solid transparent;
   border-radius: 50%;
   padding: 0;
   background: none;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
 }
 
-.avatar-btn.selected {
-  border-color: var(--primary);
-  transform: scale(1.05);
+.avatar-option.selected {
+  border-color: var(--accent-primary);
 }
 
-.avatar-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.avatar-btn img {
+.avatar-option img {
   width: 56px;
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
-}
-
-.success {
-  color: #16a34a;
 }
 </style>

@@ -5,12 +5,12 @@ import AppHeader from '@/components/AppHeader.vue'
 <template>
   <div class="layout">
     <AppHeader />
-    <main class="main">
+    <div class="main-content">
       <RouterView />
-    </main>
-    <footer class="footer">
+    </div>
+    <footer class="site-footer">
       <p>Fancheer · 博主个人展示站</p>
-      <p class="footer-links">
+      <p class="site-footer-links">
         <RouterLink to="/terms">用户协议</RouterLink>
       </p>
     </footer>
@@ -24,32 +24,33 @@ import AppHeader from '@/components/AppHeader.vue'
   flex-direction: column;
 }
 
-.main {
+.main-content {
   flex: 1;
 }
 
-.footer {
-  padding: 1.5rem;
+.site-footer {
+  padding: 2rem 1.5rem;
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.875rem;
-  border-top: 1px solid var(--border);
+  font-size: 0.8125rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
 }
 
-.footer p {
+.site-footer p {
   margin: 0;
 }
 
-.footer-links {
-  margin-top: 0.375rem;
+.site-footer-links {
+  margin-top: 0.5rem;
 }
 
-.footer-links a {
+.site-footer-links a {
   color: var(--text-muted);
   text-decoration: none;
 }
 
-.footer-links a:hover {
-  color: var(--primary);
+.site-footer-links a:hover {
+  color: var(--accent-primary);
 }
 </style>

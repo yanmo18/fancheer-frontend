@@ -33,10 +33,12 @@ function beforeCursor(items: MessageItem[]) {
   return last ? String(last.createdAt) : undefined
 }
 
+function authorInitial(name?: string) {
+  return (name || '访').slice(0, 1)
+}
+
 async function loadPublic(reset = true) {
-  if (reset) {
-    loading.value = true
-  }
+  if (reset) loading.value = true
   error.value = ''
   try {
     const msgList = await messagesApi.getPublicMessages({ limit: PAGE_SIZE })
@@ -48,9 +50,7 @@ async function loadPublic(reset = true) {
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
-    if (reset) {
-      loading.value = false
-    }
+    if (reset) loading.value = false
   }
 }
 
@@ -171,134 +171,134 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="page">
-    <h1>留言板</h1>
-    <p class="muted intro">与博主互动：公开留言所有人可见，私密留言仅博主可见</p>
+  <div class="chat-page">
+    <div class="chat-header">
+      <div class="chat-header-title">聊天室</div>
+      <div class="chat-header-desc">公开消息全员可见 · 私密消息仅博主可见</div>
+    </div>
 
-    <div class="tabs">
-      <button type="button" class="tab" :class="{ active: tab === 'public' }" @click="tab = 'public'">
-        公开留言
+    <div class="chat-mode-tabs">
+      <button type="button" class="chat-mode-btn" :class="{ active: tab === 'public' }" @click="tab = 'public'">
+        <span class="chat-mode-dot" />公开留言
       </button>
-      <button type="button" class="tab" :class="{ active: tab === 'private' }" @click="tab = 'private'">
-        私信博主
+      <button type="button" class="chat-mode-btn" :class="{ active: tab === 'private' }" @click="tab = 'private'">
+        <span class="chat-mode-dot" />私信博主
       </button>
     </div>
 
-    <form class="card compose" @submit.prevent="send">
-      <textarea
-        v-model="content"
-        rows="3"
-        :placeholder="composePlaceholder"
-        maxlength="500"
-      />
-      <div class="compose-foot">
-        <span class="muted hint">{{ tab === 'public' ? '公开可见' : '仅博主可见' }}</span>
-        <button type="submit" class="btn btn-primary" :disabled="sending">
-          {{ sending ? '发送中...' : '发送' }}
-        </button>
-      </div>
-    </form>
+    <p v-if="success" class="success chat-flash">{{ success }}</p>
+    <p v-if="error" class="error chat-flash">{{ error }}</p>
+    <p v-if="loading" class="muted chat-flash">加载中...</p>
 
-    <p v-if="success" class="success">{{ success }}</p>
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">加载中...</p>
-
-    <template v-else-if="tab === 'public'">
-      <section v-if="publicReplies.length" class="section">
-        <h2 class="section-title">博主回复</h2>
-        <div class="message-list">
-          <article v-for="reply in publicReplies" :key="reply.id" class="card message reply">
-            <div class="meta">
-              <div class="author">
-                <img v-if="reply.streamerAvatar" :src="reply.streamerAvatar" alt="" class="avatar" />
-                <strong>{{ reply.streamerNickname || '博主' }}</strong>
-                <span class="badge">官方回复</span>
-              </div>
-              <span class="muted">{{ formatDateTime(reply.createdAt) }}</span>
+    <div v-else class="chat-messages-area">
+      <template v-if="tab === 'public'">
+        <article v-for="reply in publicReplies" :key="reply.id" class="chat-bubble">
+          <div class="chat-bubble-avatar">
+            <img v-if="reply.streamerAvatar" :src="reply.streamerAvatar" alt="" class="bubble-avatar-img" />
+            <span v-else>{{ authorInitial(reply.streamerNickname) }}</span>
+          </div>
+          <div class="chat-bubble-body">
+            <span class="chat-reply-label">博主回复</span>
+            <div class="chat-bubble-header">
+              <span class="chat-bubble-name">{{ reply.streamerNickname || '博主' }}</span>
+              <span class="chat-bubble-time">{{ formatDateTime(reply.createdAt) }}</span>
             </div>
-            <p v-if="reply.originalContent" class="quote muted">回复：{{ reply.originalContent }}</p>
-            <p>{{ reply.content }}</p>
-          </article>
-        </div>
-      </section>
+            <p v-if="reply.originalContent" class="chat-quote muted">回复：{{ reply.originalContent }}</p>
+            <div class="chat-bubble-text">{{ reply.content }}</div>
+          </div>
+        </article>
 
-      <section class="section">
-        <h2 class="section-title">全部留言</h2>
-        <div v-if="messages.length" class="message-list">
-          <article v-for="msg in messages" :key="msg.id" class="card message">
-            <div class="meta">
-              <div class="author">
-                <img v-if="msg.senderAvatar" :src="msg.senderAvatar" alt="" class="avatar" />
-                <strong>{{ msg.senderNickname || '访客' }}</strong>
-              </div>
-              <span class="muted">{{ formatDateTime(msg.createdAt) }}</span>
+        <article v-for="msg in messages" :key="msg.id" class="chat-bubble">
+          <div class="chat-bubble-avatar">
+            <img v-if="msg.senderAvatar" :src="msg.senderAvatar" alt="" class="bubble-avatar-img" />
+            <span v-else>{{ authorInitial(msg.senderNickname) }}</span>
+          </div>
+          <div class="chat-bubble-body">
+            <div class="chat-bubble-header">
+              <span class="chat-bubble-name">{{ msg.senderNickname || '访客' }}</span>
+              <span class="chat-bubble-time">{{ formatDateTime(msg.createdAt) }}</span>
             </div>
-            <p>{{ msg.content }}</p>
-            <div class="actions">
-              <button type="button" class="btn btn-ghost" @click="toggleLike(msg)">
-                {{ isLiked(msg) ? '已赞' : '点赞' }} · {{ msg.likeCount }}
+            <div class="chat-bubble-text">{{ msg.content }}</div>
+            <div class="chat-bubble-actions">
+              <button type="button" class="chat-action" :class="{ liked: isLiked(msg) }" @click="toggleLike(msg)">
+                {{ isLiked(msg) ? '❤️' : '🤍' }} {{ msg.likeCount }}
               </button>
-              <button type="button" class="btn btn-ghost report" @click="openReport(msg)">举报</button>
+              <button type="button" class="chat-action" @click="openReport(msg)">⚑ 举报</button>
             </div>
-          </article>
-        </div>
-        <p v-else class="muted empty">还没有公开留言，来抢沙发吧</p>
-        <div v-if="messages.length && hasMoreMessages" class="load-more-wrap">
-          <button type="button" class="btn btn-ghost" :disabled="loadingMore" @click="loadMoreMessages">
+          </div>
+        </article>
+
+        <p v-if="!messages.length && !publicReplies.length" class="muted chat-empty">还没有留言，来抢沙发吧</p>
+        <div v-if="messages.length && hasMoreMessages" class="chat-load-more">
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="loadingMore" @click="loadMoreMessages">
             {{ loadingMore ? '加载中...' : '加载更多留言' }}
           </button>
         </div>
-      </section>
-    </template>
+      </template>
 
-    <template v-else>
-      <section class="section">
-        <h2 class="section-title">我发出的私信</h2>
-        <div v-if="sentPrivateMessages.length" class="message-list">
-          <article v-for="msg in sentPrivateMessages" :key="msg.id" class="card message sent">
-            <div class="meta">
-              <div class="author">
-                <strong>我</strong>
-                <span class="badge" :class="msg.hasReply ? 'replied' : 'pending'">
-                  {{ msg.hasReply ? '已回复' : '待回复' }}
-                </span>
-              </div>
-              <span class="muted">{{ formatDateTime(msg.createdAt) }}</span>
+      <template v-else>
+        <article v-for="msg in sentPrivateMessages" :key="`sent-${msg.id}`" class="chat-bubble">
+          <div class="chat-bubble-avatar">我</div>
+          <div class="chat-bubble-body">
+            <span class="chat-private-label">{{ msg.hasReply ? '已回复' : '待回复' }}</span>
+            <div class="chat-bubble-header">
+              <span class="chat-bubble-name">我发出的私信</span>
+              <span class="chat-bubble-time">{{ formatDateTime(msg.createdAt) }}</span>
             </div>
-            <p>{{ msg.content }}</p>
-          </article>
-        </div>
-        <p v-else class="muted empty">还没有发出过私密留言</p>
-      </section>
+            <div class="chat-bubble-text">{{ msg.content }}</div>
+          </div>
+        </article>
 
-      <section class="section">
-        <h2 class="section-title">博主回复我的私信</h2>
-        <div v-if="privateReplies.length" class="message-list">
-          <article v-for="reply in privateReplies" :key="reply.id" class="card message reply">
-            <div class="meta">
-              <div class="author">
-                <img v-if="reply.streamerAvatar" :src="reply.streamerAvatar" alt="" class="avatar" />
-                <strong>{{ reply.streamerNickname || '博主' }}</strong>
-              </div>
-              <span class="muted">{{ formatDateTime(reply.createdAt) }}</span>
+        <article v-for="reply in privateReplies" :key="reply.id" class="chat-bubble">
+          <div class="chat-bubble-avatar">
+            <img v-if="reply.streamerAvatar" :src="reply.streamerAvatar" alt="" class="bubble-avatar-img" />
+            <span v-else>{{ authorInitial(reply.streamerNickname) }}</span>
+          </div>
+          <div class="chat-bubble-body">
+            <span class="chat-reply-label">博主回复</span>
+            <div class="chat-bubble-header">
+              <span class="chat-bubble-name">{{ reply.streamerNickname || '博主' }}</span>
+              <span class="chat-bubble-time">{{ formatDateTime(reply.createdAt) }}</span>
             </div>
-            <p v-if="reply.originalContent" class="quote muted">你的留言：{{ reply.originalContent }}</p>
-            <p>{{ reply.content }}</p>
-          </article>
-        </div>
-        <p v-else class="muted empty">暂无博主回复。发送上方私密留言后，博主回复会显示在这里。</p>
-      </section>
-    </template>
+            <p v-if="reply.originalContent" class="chat-quote muted">你的留言：{{ reply.originalContent }}</p>
+            <div class="chat-bubble-text">{{ reply.content }}</div>
+          </div>
+        </article>
+
+        <p v-if="!sentPrivateMessages.length && !privateReplies.length" class="muted chat-empty">
+          暂无私密留言记录
+        </p>
+      </template>
+    </div>
+
+    <form class="chat-input-area" @submit.prevent="send">
+      <div class="chat-input-row">
+        <textarea
+          v-model="content"
+          class="chat-input"
+          rows="2"
+          maxlength="500"
+          :placeholder="composePlaceholder"
+        />
+        <button type="submit" class="chat-send-btn" :disabled="sending">
+          {{ sending ? '...' : '发送' }}
+        </button>
+      </div>
+      <div class="chat-input-footer">
+        <span class="chat-char-count">{{ content.length }}/500</span>
+        <span class="chat-cooldown-text">{{ tab === 'public' ? '公开可见' : '仅博主可见' }}</span>
+      </div>
+    </form>
 
     <div v-if="reportTarget" class="modal-mask" @click.self="closeReport">
-      <form class="card modal" @submit.prevent="submitReport">
-        <h2>举报留言</h2>
-        <p class="muted quote">{{ reportTarget.content }}</p>
-        <label>
-          举报原因 *
-          <textarea v-model="reportReason" rows="3" maxlength="200" placeholder="请说明举报原因" required />
-        </label>
-        <div class="form-actions">
+      <form class="auth-card modal-card" @submit.prevent="submitReport">
+        <h2 class="modal-title">举报留言</h2>
+        <p class="muted chat-quote">{{ reportTarget.content }}</p>
+        <div class="auth-field">
+          <label class="auth-label">举报原因 *</label>
+          <textarea v-model="reportReason" class="auth-input" rows="3" maxlength="200" required />
+        </div>
+        <div class="modal-actions">
           <button type="button" class="btn btn-ghost" @click="closeReport">取消</button>
           <button type="submit" class="btn btn-primary">提交举报</button>
         </div>
@@ -308,200 +308,66 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 1.5rem;
-}
-
-.intro {
-  margin: 0.25rem 0 1rem;
-}
-
-.tabs {
+.chat-mode-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.tab {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  cursor: pointer;
-  font: inherit;
-  color: var(--text-muted);
+.chat-flash {
+  margin: 0 0 12px;
 }
 
-.tab.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-
-.compose {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: inherit;
-  resize: vertical;
-}
-
-.compose-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.hint {
-  font-size: 0.8125rem;
-}
-
-.section {
-  margin-bottom: 1.5rem;
-}
-
-.section-title {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-}
-
-.message-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.message {
-  padding: 1rem;
-}
-
-.message.reply {
-  border-left: 3px solid var(--primary);
-}
-
-.message.sent {
-  border-left: 3px solid #94a3b8;
-}
-
-.badge.replied {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.badge.pending {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.author {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.badge {
-  font-size: 0.6875rem;
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  background: #eef2ff;
-  color: var(--primary);
-}
-
-.quote {
-  margin: 0 0 0.5rem;
-  font-size: 0.8125rem;
-  padding: 0.5rem 0.75rem;
-  background: #f8fafc;
-  border-radius: 6px;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.report {
-  color: var(--text-muted);
-}
-
-.empty {
+.chat-empty {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 2rem 0;
 }
 
-.load-more-wrap {
+.chat-load-more {
   display: flex;
   justify-content: center;
-  margin-top: 0.75rem;
+  padding: 0.5rem 0 1rem;
 }
 
-.success {
-  color: #16a34a;
-  margin-bottom: 0.75rem;
+.bubble-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.chat-quote {
+  font-size: 0.8125rem;
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
 }
 
 .modal-mask {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(0, 0, 0, 0.55);
   display: grid;
   place-items: center;
   padding: 1rem;
-  z-index: 100;
+  z-index: 200;
 }
 
-.modal {
+.modal-card {
   width: 100%;
   max-width: 420px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
 }
 
-.modal h2 {
-  margin: 0;
-  font-size: 1.125rem;
+.modal-title {
+  margin: 0 0 0.75rem;
+  font-family: 'Noto Serif SC', serif;
 }
 
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-}
-
-.form-actions {
+.modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 </style>
