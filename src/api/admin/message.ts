@@ -37,9 +37,9 @@ export const streamerReply = (messageId: string, content: string) =>
     data: { content },
   })
 
-export const privateReply = (messageId: string, content: string) =>
+export const privateReply = (messageId: string, content: string, isPublic = false) =>
   request<{ id: string }>({
     url: `/api/messages/${messageId}/private-reply`,
     method: 'POST',
-    data: { content },
+    data: { content, isPublic },
   })

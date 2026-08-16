@@ -105,8 +105,19 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  const needsSession = Boolean(to.meta.requiresAuth || to.meta.requiresAdmin)
+
   if (auth.token && !auth.user) {
-    await auth.fetchMe()
+    if (needsSession) {
+      await Promise.race([
+        auth.fetchMe(),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 5000)
+        }),
+      ])
+    } else {
+      void auth.fetchMe()
+    }
   }
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
@@ -120,6 +131,12 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { name: 'home' }
   }
+
+  return true
+})
+
+router.onError((error) => {
+  console.error('[router]', error)
 })
 
 router.afterEach((to) => {

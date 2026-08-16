@@ -19,6 +19,8 @@ http.interceptors.response.use(
   (error) => Promise.reject(error),
 )
 
+http.defaults.validateStatus = () => true
+
 export async function request<T>(config: Parameters<typeof http.request>[0]): Promise<T> {
   const res = await http.request<ApiResponse<T>>(config)
   const body = res.data

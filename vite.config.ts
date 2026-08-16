@@ -11,6 +11,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    strictPort: false,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
@@ -21,5 +22,9 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  optimizeDeps: {
+    // 仅预构建 echarts；不要 include vue，否则重启时可能触发 shallowRef is not a function
+    include: ['echarts'],
   },
 })

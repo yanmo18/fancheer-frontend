@@ -1,318 +1,314 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import type { GraphData, GraphCharacter } from '@/types/api'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { ECharts } from 'echarts'
+import type { GraphData } from '@/types/api'
+import { useTheme } from '@/composables/useTheme'
 
 const props = defineProps<{
   data: GraphData
 }>()
 
-const selectedId = ref<string | null>(null)
+const { theme } = useTheme()
 
-const center = computed(() =>
-  props.data.characters.find((c) => c.isCenter) ?? props.data.characters[0] ?? null,
-)
+const chartRef = ref<HTMLDivElement | null>(null)
+let chart: ECharts | null = null
+let echartsModule: typeof import('echarts') | null = null
+let resizeObserver: ResizeObserver | null = null
+let hasOption = false
 
-const others = computed(() =>
-  props.data.characters.filter((c) => c.id !== center.value?.id),
-)
+const NODE_COLORS = [
+  '#7B3FA0',
+  '#C4956A',
+  '#A0522D',
+  '#9B6B8E',
+  '#6B8E6B',
+  '#C4A35A',
+  '#B85C5C',
+  '#5A8FA0',
+]
 
-const selected = computed(() =>
-  props.data.characters.find((c) => c.id === selectedId.value) ?? null,
-)
+const LINK_COLORS = [
+  '#8B3352',
+  '#7B3FA0',
+  '#C4956A',
+  '#A0522D',
+  '#9B6B8E',
+  '#6B8E6B',
+  '#C4A35A',
+  '#B85C5C',
+  '#5A8FA0',
+  '#6B2D5B',
+]
 
-const positions = computed(() => {
-  const map = new Map<string, { x: number; y: number }>()
-  const cx = 400
-  const cy = 260
-  const rx = 200
-  const ry = 150
+function cssVar(name: string, fallback: string) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
 
-  if (center.value) {
-    map.set(center.value.id, { x: cx, y: cy })
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function nodeTooltipHtml(name: string, bio: string, relations: string[]) {
+  const lines = [`<b>${escapeHtml(name)}</b>`]
+  if (bio.trim()) {
+    bio.split(/\n+/).forEach((line) => {
+      if (line.trim()) lines.push(escapeHtml(line.trim()))
+    })
+  }
+  if (relations.length) {
+    lines.push('')
+    relations.slice(0, 4).forEach((rel) => lines.push(escapeHtml(rel)))
+    if (relations.length > 4) lines.push('…')
+  }
+  return lines.join('<br/>')
+}
+
+function nodeId(value: string | number | undefined | null) {
+  return value == null ? '' : String(value)
+}
+
+function buildOption() {
+  const isDark = theme.value === 'dark'
+  const textColor = isDark ? '#a89e96' : '#5A6068'
+  const accentPrimary = cssVar('--accent-primary', '#8B3352')
+  const accentSecondary = cssVar('--accent-secondary', '#6B2D5B')
+
+  const nameById = new Map(props.data.characters.map((c) => [nodeId(c.id), c.name]))
+  const centerChar = props.data.characters.find((c) => c.isCenter)
+  const centerId = centerChar ? nodeId(centerChar.id) : ''
+  const nodeCount = props.data.characters.length
+  const centerNeighbors = new Set<string>()
+  if (centerId) {
+    for (const rel of props.data.relations) {
+      const fromId = nodeId(rel.fromCharacterId)
+      const toId = nodeId(rel.toCharacterId)
+      if (fromId === centerId) centerNeighbors.add(toId)
+      if (toId === centerId) centerNeighbors.add(fromId)
+    }
   }
 
-  others.value.forEach((char, index) => {
-    const angle = (2 * Math.PI * index) / Math.max(others.value.length, 1) - Math.PI / 2
-    map.set(char.id, {
-      x: cx + rx * Math.cos(angle),
-      y: cy + ry * Math.sin(angle),
-    })
+  const relationLinesByChar = new Map<string, string[]>()
+  for (const char of props.data.characters) {
+    relationLinesByChar.set(nodeId(char.id), [])
+  }
+  for (const rel of props.data.relations) {
+    const fromId = nodeId(rel.fromCharacterId)
+    const toId = nodeId(rel.toCharacterId)
+    const fromName = nameById.get(fromId) ?? '?'
+    const toName = nameById.get(toId) ?? '?'
+    relationLinesByChar.get(fromId)?.push(`→ ${toName}：${rel.relationLabel}`)
+    relationLinesByChar.get(toId)?.push(`← ${fromName}：${rel.relationLabel}`)
+  }
+
+  let colorIndex = 0
+  const nodes = props.data.characters.map((char) => {
+    const charId = nodeId(char.id)
+    const relationHint = relationLinesByChar.get(charId) ?? []
+    const symbolSize = char.isCenter
+      ? 60
+      : Math.max(24, 42 - Math.min(14, relationHint.length * 2))
+    const nodeColor = char.isCenter
+      ? accentPrimary
+      : NODE_COLORS[colorIndex++ % NODE_COLORS.length]
+
+    return {
+      id: charId,
+      name: char.name,
+      value: char.isCenter ? 20 : 10,
+      symbolSize,
+      category: char.isCenter ? 0 : centerNeighbors.has(charId) ? 1 : 2,
+      itemStyle: {
+        color: nodeColor,
+        shadowBlur: char.isCenter ? 12 : 0,
+        shadowColor: char.isCenter ? `${accentPrimary}55` : 'transparent',
+      },
+      label: {
+        fontSize: char.isCenter ? 14 : 11,
+        fontWeight: char.isCenter ? 'bold' : 500,
+      },
+      tooltip: {
+        formatter: nodeTooltipHtml(char.name, char.bio ?? '', relationHint),
+      },
+    }
   })
 
-  return map
-})
+  const links = props.data.relations
+    .map((rel, index) => {
+      const source = nodeId(rel.fromCharacterId)
+      const target = nodeId(rel.toCharacterId)
+      if (!source || !target || !nameById.has(source) || !nameById.has(target)) return null
 
-const edges = computed(() =>
-  props.data.relations
-    .map((rel) => {
-      const from = positions.value.get(rel.fromCharacterId)
-      const to = positions.value.get(rel.toCharacterId)
-      if (!from || !to) return null
+      const touchesCenter = source === centerId || target === centerId
+
       return {
-        id: rel.id,
-        from,
-        to,
-        label: rel.relationLabel,
-        mid: {
-          x: (from.x + to.x) / 2,
-          y: (from.y + to.y) / 2,
+        source,
+        target,
+        value: touchesCenter ? 8 : 4,
+        lineStyle: {
+          color: LINK_COLORS[index % LINK_COLORS.length],
+          width: touchesCenter ? 2.5 : 1.5,
+          curveness: 0.12,
+          opacity: 0.85,
+        },
+        emphasis: {
+          lineStyle: {
+            width: 4,
+            opacity: 1,
+          },
+        },
+        tooltip: {
+          formatter: escapeHtml(rel.relationLabel || '关联'),
         },
       }
     })
-    .filter(Boolean) as Array<{
-    id: string
-    from: { x: number; y: number }
-    to: { x: number; y: number }
-    label: string
-    mid: { x: number; y: number }
-  }>,
+    .filter((link): link is NonNullable<typeof link> => link != null)
+
+  return {
+    backgroundColor: 'transparent',
+    animation: false,
+    tooltip: {
+      trigger: 'item',
+      enterable: true,
+      confine: true,
+      backgroundColor: isDark ? 'rgba(40,40,50,0.95)' : 'rgba(255,255,255,0.95)',
+      borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(180,140,100,0.12)',
+      borderWidth: 1,
+      textStyle: { color: isDark ? '#ece8e4' : '#3D3028', fontSize: 12, lineHeight: 18 },
+      padding: [10, 14],
+      extraCssText: isDark
+        ? 'box-shadow: 0 8px 24px rgba(0,0,0,0.35); border-radius: 8px;'
+        : 'box-shadow: 0 8px 24px rgba(61,48,40,0.12); border-radius: 8px;',
+    },
+    legend: { show: false },
+    series: [
+      {
+        type: 'graph',
+        layout: 'force',
+        data: nodes,
+        links,
+        categories: [
+          { name: '中心', itemStyle: { color: accentPrimary } },
+          { name: '核心', itemStyle: { color: accentSecondary } },
+          { name: '关联', itemStyle: { color: '#9B6B8E' } },
+        ],
+        roam: true,
+        draggable: true,
+        scaleLimit: { min: 0.4, max: 3 },
+        force: {
+          repulsion: Math.max(320, nodeCount * 28),
+          gravity: centerId ? 0.12 : 0.08,
+          edgeLength: nodeCount > 8 ? [90, 160] : [120, 200],
+          friction: 0.55,
+          layoutAnimation: true,
+        },
+        label: {
+          show: true,
+          position: 'bottom',
+          color: textColor,
+          fontSize: 11,
+          fontWeight: 500,
+        },
+        lineStyle: {
+          color: accentPrimary,
+          width: 1.8,
+          opacity: 0.8,
+          curveness: 0.12,
+        },
+        emphasis: {
+          focus: 'adjacency',
+          scale: true,
+          lineStyle: { width: 4, opacity: 1 },
+          label: { fontWeight: 'bold' },
+        },
+        edgeSymbol: ['none', 'none'],
+        edgeLabel: { show: false },
+      },
+    ],
+  }
+}
+
+function renderChart(replace = false) {
+  if (!chartRef.value || !props.data.characters.length || !echartsModule) return
+
+  if (!chart) {
+    chart = echartsModule.init(chartRef.value, undefined, { renderer: 'canvas' })
+  }
+
+  chart.setOption(buildOption(), replace || !hasOption)
+  hasOption = true
+}
+
+onMounted(async () => {
+  echartsModule = await import('echarts')
+  renderChart(true)
+
+  if (chartRef.value) {
+    resizeObserver = new ResizeObserver(() => chart?.resize())
+    resizeObserver.observe(chartRef.value)
+  }
+})
+
+watch(
+  () => props.data,
+  () => {
+    hasOption = false
+    renderChart(true)
+  },
+  { deep: true },
 )
 
-function selectCharacter(char: GraphCharacter) {
-  selectedId.value = selectedId.value === char.id ? null : char.id
-}
+watch(theme, () => {
+  renderChart(false)
+})
 
-function nodeRadius(char: GraphCharacter) {
-  return char.isCenter ? 52 : 42
-}
-
-const selectedRelations = computed(() => {
-  if (!selectedId.value) return []
-  return props.data.relations.filter(
-    (r) => r.fromCharacterId === selectedId.value || r.toCharacterId === selectedId.value,
-  )
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  chart?.dispose()
+  chart = null
+  hasOption = false
 })
 </script>
 
 <template>
-  <div v-if="data.characters.length" class="graph-wrapper graph-viewer">
-    <div class="graph-canvas">
-      <svg viewBox="0 0 800 520" class="graph-svg" aria-hidden="true">
-        <defs>
-          <marker
-            id="graph-arrow"
-            markerWidth="8"
-            markerHeight="8"
-            refX="6"
-            refY="3"
-            orient="auto"
-          >
-            <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" />
-          </marker>
-        </defs>
-
-        <g class="graph-edges">
-          <g v-for="edge in edges" :key="edge.id">
-            <line
-              :x1="edge.from.x"
-              :y1="edge.from.y"
-              :x2="edge.to.x"
-              :y2="edge.to.y"
-              class="edge-line"
-              marker-end="url(#graph-arrow)"
-            />
-            <rect
-              :x="edge.mid.x - 36"
-              :y="edge.mid.y - 12"
-              width="72"
-              height="24"
-              rx="12"
-              class="edge-label-bg"
-            />
-            <text
-              :x="edge.mid.x"
-              :y="edge.mid.y + 4"
-              text-anchor="middle"
-              class="edge-label"
-            >
-              {{ edge.label }}
-            </text>
-          </g>
-        </g>
-
-        <g
-          v-for="char in data.characters"
-          :key="char.id"
-          class="graph-node"
-          :class="{
-            'graph-node--center': char.isCenter,
-            'graph-node--selected': selectedId === char.id,
-          }"
-          :transform="`translate(${positions.get(char.id)?.x ?? 0}, ${positions.get(char.id)?.y ?? 0})`"
-          @click="selectCharacter(char)"
-        >
-          <circle
-            :r="nodeRadius(char) + 6"
-            class="node-ring"
-          />
-          <clipPath :id="`clip-${char.id}`">
-            <circle :r="nodeRadius(char)" />
-          </clipPath>
-          <image
-            v-if="char.avatarUrl"
-            :href="char.avatarUrl"
-            :x="-nodeRadius(char)"
-            :y="-nodeRadius(char)"
-            :width="nodeRadius(char) * 2"
-            :height="nodeRadius(char) * 2"
-            :clip-path="`url(#clip-${char.id})`"
-            preserveAspectRatio="xMidYMid slice"
-          />
-          <circle
-            v-else
-            :r="nodeRadius(char)"
-            class="node-placeholder"
-          />
-          <text :y="nodeRadius(char) + 22" text-anchor="middle" class="node-name">
-            {{ char.name }}
-          </text>
-        </g>
-      </svg>
-    </div>
-
-    <aside v-if="selected" class="graph-detail">
-      <img
-        v-if="selected.avatarUrl"
-        :src="selected.avatarUrl"
-        :alt="selected.name"
-        class="detail-avatar"
-      />
-      <div v-else class="detail-avatar detail-avatar--placeholder">
-        {{ selected.name.charAt(0) }}
-      </div>
-      <h3>{{ selected.name }}</h3>
-      <p v-if="selected.bio" class="detail-bio">{{ selected.bio }}</p>
-      <ul class="detail-relations">
-        <li v-for="rel in selectedRelations" :key="rel.id">
-          <template v-if="selected && rel.fromCharacterId === selected.id">
-            → {{ data.characters.find(c => c.id === rel.toCharacterId)?.name }}：{{ rel.relationLabel }}
-          </template>
-          <template v-else>
-            ← {{ data.characters.find(c => c.id === rel.fromCharacterId)?.name }}：{{ rel.relationLabel }}
-          </template>
-        </li>
-      </ul>
-    </aside>
+  <div v-if="data.characters.length" class="graph-shell">
+    <div ref="chartRef" class="graph-wrapper" role="img" aria-label="关系图谱" />
+    <p class="graph-hint">滚轮缩放 · 拖拽画布平移 · 拖拽节点调整位置 · 悬浮查看详情</p>
   </div>
 </template>
 
 <style scoped>
-.graph-viewer {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 1.5rem;
-  align-items: stretch;
-  height: auto;
-  min-height: 480px;
-  padding: 1rem;
-}
-
-.graph-canvas {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.graph-svg {
-  display: block;
+.graph-shell {
   width: 100%;
-  height: auto;
 }
 
-.edge-line {
-  stroke: var(--border-medium);
-  stroke-width: 2;
-}
-
-.edge-label-bg {
-  fill: var(--bg-card);
-  stroke: var(--border-subtle);
-}
-
-.edge-label {
-  fill: var(--text-muted);
-  font-size: 12px;
-}
-
-.graph-node {
-  cursor: pointer;
-}
-
-.node-ring {
-  fill: var(--bg-card);
-  stroke: var(--border-medium);
-  stroke-width: 3;
-}
-
-.graph-node--center .node-ring {
-  stroke: var(--accent-primary);
-  stroke-width: 4;
-}
-
-.graph-node--selected .node-ring {
-  stroke: var(--gold);
-}
-
-.node-placeholder {
-  fill: var(--bg-elevated);
-}
-
-.node-name {
-  fill: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-.graph-detail {
+.graph-wrapper {
+  width: 100%;
+  height: 480px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  padding: 1rem;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
 }
 
-.detail-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-bottom: 0.75rem;
-}
-
-.detail-avatar--placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #e2e8f0;
-  color: #475569;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.graph-detail h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-}
-
-.detail-bio {
-  margin: 0 0 0.75rem;
-  color: #64748b;
-  line-height: 1.5;
-  font-size: 0.9rem;
-}
-
-.detail-relations {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: #475569;
-  font-size: 0.875rem;
-  line-height: 1.6;
+.graph-hint {
+  margin: 0.625rem 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 768px) {
-  .graph-viewer {
-    grid-template-columns: 1fr;
+  .graph-wrapper {
+    height: 360px;
+    border-radius: 16px;
   }
 }
 </style>

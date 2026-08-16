@@ -14,6 +14,7 @@ export interface AdminReportItem {
   messageSenderNickname: string
   reason: string
   status: ReportStatus
+  resolutionNote?: string
   createdAt: string
   resolvedAt?: string | null
 }
@@ -46,8 +47,12 @@ export const getReportDetail = (id: string) =>
     method: 'GET',
   })
 
-export const resolveReport = (id: string) =>
-  request<null>({ url: `/api/admin/reports/${id}/resolve`, method: 'PUT' })
+export const resolveReport = (id: string, resolutionNote: string) =>
+  request<null>({
+    url: `/api/admin/reports/${id}/resolve`,
+    method: 'PUT',
+    data: { resolutionNote },
+  })
 
 export const deleteViolationMessage = (id: string) =>
   request<null>({ url: `/api/admin/reports/${id}/message`, method: 'DELETE' })

@@ -90,7 +90,12 @@ async function reloadCurrent() {
 
 const replyTarget = ref<AdminMessageItem | null>(null)
 const replyContent = ref('')
+const publishPrivateReply = ref(false)
 const showReplyForm = ref(false)
+
+const showResolveForm = ref(false)
+const resolveTargetId = ref('')
+const resolutionNote = ref('')
 
 const reportDetail = ref<AdminReportDetail | null>(null)
 const showReportDetail = ref(false)
@@ -129,12 +134,14 @@ function closeReportDetail() {
 function openReply(item: AdminMessageItem) {
   replyTarget.value = item
   replyContent.value = ''
+  publishPrivateReply.value = false
   showReplyForm.value = true
 }
 
 function closeReply() {
   replyTarget.value = null
   replyContent.value = ''
+  publishPrivateReply.value = false
   showReplyForm.value = false
 }
 
@@ -150,8 +157,8 @@ async function submitReply() {
   message.value = ''
   try {
     if (mainTab.value === 'private') {
-      await messageApi.privateReply(replyTarget.value.id, text)
-      message.value = '私密回复已发送'
+      await messageApi.privateReply(replyTarget.value.id, text, publishPrivateReply.value)
+      message.value = publishPrivateReply.value ? '已公开发布回复（私信发送者匿名）' : '私密回复已发送'
     } else {
       await messageApi.streamerReply(replyTarget.value.id, text)
       message.value = '公开回复已发布'
@@ -181,17 +188,38 @@ async function removeMessage(id: string) {
   }
 }
 
+function openResolveForm(id: string) {
+  resolveTargetId.value = id
+  resolutionNote.value = ''
+  showResolveForm.value = true
+}
+
+function closeResolveForm() {
+  showResolveForm.value = false
+  resolveTargetId.value = ''
+  resolutionNote.value = ''
+}
+
 async function resolveReport(id: string) {
-  if (!confirm('确定标记此工单为已办结？')) return
+  openResolveForm(id)
+}
+
+async function submitResolve() {
+  const note = resolutionNote.value.trim()
+  if (!note) {
+    error.value = '请填写处理结果说明'
+    return
+  }
   loading.value = true
   error.value = ''
   message.value = ''
   try {
-    await reportApi.resolveReport(id)
+    await reportApi.resolveReport(resolveTargetId.value, note)
     message.value = '工单已办结'
-    if (reportDetail.value?.id === id) {
+    if (reportDetail.value?.id === resolveTargetId.value) {
       closeReportDetail()
     }
+    closeResolveForm()
     await reloadCurrent()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '操作失败'
@@ -411,6 +439,7 @@ onMounted(load)
                 <div><dt>状态</dt><dd><span class="status-badge" :class="reportDetail.status">{{ statusLabel(reportDetail.status) }}</span></dd></div>
                 <div><dt>举报时间</dt><dd>{{ formatDateTime(reportDetail.createdAt) }}</dd></div>
                 <div v-if="reportDetail.resolvedAt"><dt>办结时间</dt><dd>{{ formatDateTime(reportDetail.resolvedAt) }}</dd></div>
+                <div v-if="reportDetail.resolutionNote"><dt>处理说明</dt><dd>{{ reportDetail.resolutionNote }}</dd></div>
                 <div><dt>同留言举报</dt><dd>{{ reportDetail.relatedReportCount }} 次</dd></div>
               </dl>
             </section>
@@ -457,19 +486,46 @@ onMounted(load)
         <h2>{{ mainTab === 'private' ? '私密回复' : '公开回复' }}</h2>
         <p class="muted quote">原留言：{{ replyTarget.content }}</p>
         <p class="muted small">发送者：{{ replyTarget.senderNickname }}</p>
+        <label v-if="mainTab === 'private'" class="checkbox-row">
+          <input v-model="publishPrivateReply" type="checkbox" />
+          <span>同时公开发布到聊天室（原私信发送者匿名展示）</span>
+        </label>
         <label>
           回复内容 *
           <textarea
             v-model="replyContent"
             rows="4"
             maxlength="500"
-            :placeholder="mainTab === 'private' ? '仅该用户可见' : '所有人可见，会显示在留言板「博主回复」'"
+            :placeholder="mainTab === 'private'
+              ? (publishPrivateReply ? '回复将同时出现在聊天室，私信内容以匿名展示' : '仅该用户可见')
+              : '所有人可见，会显示在留言板「博主回复」'"
             required
           />
         </label>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" @click="closeReply">取消</button>
           <button type="submit" class="btn btn-primary" :disabled="loading">发送回复</button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="showResolveForm" class="modal-mask" @click.self="closeResolveForm">
+      <form class="card modal" @submit.prevent="submitResolve">
+        <h2>办结举报工单</h2>
+        <p class="muted">请填写处理结果，便于告知举报人处理情况。</p>
+        <label>
+          处理说明 *
+          <textarea
+            v-model="resolutionNote"
+            rows="4"
+            maxlength="500"
+            placeholder="例如：经核实已删除违规内容 / 未发现违规等"
+            required
+          />
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" @click="closeResolveForm">取消</button>
+          <button type="submit" class="btn btn-primary" :disabled="loading">确认办结</button>
         </div>
       </form>
     </div>
@@ -627,6 +683,19 @@ textarea {
   border-radius: 8px;
   font: inherit;
   resize: vertical;
+}
+
+.checkbox-row {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.checkbox-row input {
+  margin-top: 0.2rem;
 }
 
 .form-actions {

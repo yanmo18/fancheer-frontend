@@ -11,6 +11,7 @@ export interface AdminUserItem {
   avatar?: string
   role: UserRole
   status: UserStatus
+  banRemark?: string
   createdAt: string
 }
 
@@ -33,8 +34,8 @@ export const getAdminUsers = (params: {
     },
   })
 
-export const banUser = (id: string) =>
-  request<null>({ url: `/api/admin/users/${id}/ban`, method: 'PUT' })
+export const banUser = (id: string, remark: string) =>
+  request<null>({ url: `/api/admin/users/${id}/ban`, method: 'PUT', data: { remark } })
 
 export const unbanUser = (id: string) =>
   request<null>({ url: `/api/admin/users/${id}/unban`, method: 'PUT' })

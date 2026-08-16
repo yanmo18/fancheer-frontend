@@ -203,7 +203,14 @@ onMounted(load)
               <span class="chat-bubble-name">{{ reply.streamerNickname || '博主' }}</span>
               <span class="chat-bubble-time">{{ formatDateTime(reply.createdAt) }}</span>
             </div>
-            <p v-if="reply.originalContent" class="chat-quote muted">回复：{{ reply.originalContent }}</p>
+            <p v-if="reply.originalContent" class="chat-quote muted">
+              <template v-if="reply.isAnonymous">
+                匿名访客的私信：{{ reply.originalContent }}
+              </template>
+              <template v-else>
+                回复 {{ reply.originalSenderNickname || '访客' }}：{{ reply.originalContent }}
+              </template>
+            </p>
             <div class="chat-bubble-text">{{ reply.content }}</div>
           </div>
         </article>

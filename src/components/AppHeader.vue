@@ -62,7 +62,13 @@ const avatarInitial = () =>
       <RouterLink to="/" class="nav-link" :class="{ active: navActive('/') && route.path === '/' }" @click="closeMenu">
         首页
       </RouterLink>
-      <RouterLink to="/messages" class="nav-link" :class="{ active: navActive('/messages') }" @click="closeMenu">
+      <RouterLink
+        v-if="auth.isLoggedIn"
+        to="/messages"
+        class="nav-link"
+        :class="{ active: navActive('/messages') }"
+        @click="closeMenu"
+      >
         聊天室
       </RouterLink>
       <RouterLink

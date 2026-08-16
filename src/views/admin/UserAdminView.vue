@@ -20,9 +20,9 @@ const filterStatus = ref('')
 const keyword = ref('')
 
 const roleLabels: Record<UserRole, string> = {
-  fan: '访客',
-  admin: '协管员',
-  streamer: '站主',
+  fan: '粉丝',
+  admin: '管理员',
+  streamer: '博主',
 }
 
 const statusLabels = {
@@ -54,25 +54,60 @@ function search() {
   load()
 }
 
+const showBanForm = ref(false)
+const banTarget = ref<AdminUserItem | null>(null)
+const banRemark = ref('')
+
+function openBanForm(item: AdminUserItem) {
+  banTarget.value = item
+  banRemark.value = ''
+  showBanForm.value = true
+}
+
+function closeBanForm() {
+  showBanForm.value = false
+  banTarget.value = null
+  banRemark.value = ''
+}
+
 async function toggleBan(item: AdminUserItem) {
   const isBanned = item.status === 'banned'
-  const action = isBanned ? '解封' : '封禁'
-  if (!confirm(`确定${action}用户「${item.nickname}」？`)) return
+  if (isBanned) {
+    if (!confirm(`确定解封用户「${item.nickname}」？`)) return
+    loading.value = true
+    error.value = ''
+    message.value = ''
+    try {
+      await userApi.unbanUser(item.id)
+      message.value = '已解封'
+      await load()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '解封失败'
+    } finally {
+      loading.value = false
+    }
+    return
+  }
+  openBanForm(item)
+}
 
+async function submitBan() {
+  if (!banTarget.value) return
+  const remark = banRemark.value.trim()
+  if (!remark) {
+    error.value = '请填写封禁备注'
+    return
+  }
   loading.value = true
   error.value = ''
   message.value = ''
   try {
-    if (isBanned) {
-      await userApi.unbanUser(item.id)
-      message.value = '已解封'
-    } else {
-      await userApi.banUser(item.id)
-      message.value = '已封禁'
-    }
+    await userApi.banUser(banTarget.value.id, remark)
+    message.value = '已封禁'
+    closeBanForm()
     await load()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : `${action}失败`
+    error.value = e instanceof Error ? e.message : '封禁失败'
   } finally {
     loading.value = false
   }
@@ -132,7 +167,7 @@ onMounted(load)
     <header class="page-header">
       <div>
         <h1>用户管理</h1>
-        <p class="muted">查看注册用户，封禁 / 解封，站主可设置协管员</p>
+        <p class="muted">查看注册用户，封禁 / 解封（需备注），博主可设置管理员</p>
       </div>
     </header>
 
@@ -140,9 +175,9 @@ onMounted(load)
       <input v-model="keyword" placeholder="搜索用户名 / 昵称" @keyup.enter="search" />
       <select v-model="filterRole">
         <option value="">全部角色</option>
-        <option value="fan">访客</option>
-        <option value="admin">协管员</option>
-        <option value="streamer">站主</option>
+        <option value="fan">粉丝</option>
+        <option value="admin">管理员</option>
+        <option value="streamer">博主</option>
       </select>
       <select v-model="filterStatus">
         <option value="">全部状态</option>
@@ -165,6 +200,7 @@ onMounted(load)
             <th>用户名</th>
             <th>角色</th>
             <th>状态</th>
+            <th>封禁备注</th>
             <th>注册时间</th>
             <th>操作</th>
           </tr>
@@ -185,6 +221,7 @@ onMounted(load)
                 {{ statusLabels[item.status] }}
               </span>
             </td>
+            <td class="remark-cell">{{ item.banRemark || '—' }}</td>
             <td>{{ formatDateTime(item.createdAt) }}</td>
             <td class="actions">
               <button
@@ -208,7 +245,7 @@ onMounted(load)
             </td>
           </tr>
           <tr v-if="!list.length">
-            <td colspan="6" class="muted center">暂无数据</td>
+            <td colspan="7" class="muted center">暂无数据</td>
           </tr>
         </tbody>
       </table>
@@ -218,6 +255,27 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page <= 1" @click="prevPage">上一页</button>
       <span class="muted">{{ page }} / {{ totalPages }}</span>
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
+    </div>
+
+    <div v-if="showBanForm && banTarget" class="modal-mask" @click.self="closeBanForm">
+      <form class="card modal" @submit.prevent="submitBan">
+        <h2>封禁用户</h2>
+        <p class="muted">用户：{{ banTarget.nickname }}（{{ banTarget.username }}）</p>
+        <label>
+          封禁备注 *
+          <textarea
+            v-model="banRemark"
+            rows="3"
+            maxlength="500"
+            placeholder="请说明封禁原因，便于后续审计"
+            required
+          />
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" @click="closeBanForm">取消</button>
+          <button type="submit" class="btn btn-primary danger" :disabled="loading">确认封禁</button>
+        </div>
+      </form>
     </div>
   </div>
 </template>
@@ -327,6 +385,50 @@ td {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.remark-cell {
+  max-width: 180px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.modal {
+  width: min(100%, 420px);
+  padding: 1.25rem;
+}
+
+.modal label {
+  display: block;
+  margin-top: 1rem;
+}
+
+.modal textarea {
+  width: 100%;
+  margin-top: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
   margin-top: 1rem;
 }
 

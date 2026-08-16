@@ -126,6 +126,10 @@ input, textarea, select { font-family: inherit; outline: none; }
 .page { display: none; animation: fadeIn 0.5s ease; }
 .page.active { display: block; }
 
+#app {
+  min-height: 100vh;
+}
+
 /* ============================================================
    SECTION ALTERNATING BACKGROUNDS (replaces dividers)
    ============================================================ */

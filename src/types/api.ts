@@ -112,6 +112,8 @@ export interface PublicReplyItem {
   id: string
   messageId: string
   originalContent: string
+  originalSenderNickname?: string
+  isAnonymous?: boolean
   streamerNickname: string
   streamerAvatar?: string
   content: string

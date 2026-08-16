@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import MusicPlayer from '@/components/MusicPlayer.vue'
-import GraphViewer from '@/components/GraphViewer.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
 import * as publicApi from '@/api/public'
 import { setPageMeta } from '@/utils/seo'
@@ -15,6 +14,8 @@ import type {
   SongItem,
   StreamerInfo,
 } from '@/types/api'
+
+const GraphViewer = defineAsyncComponent(() => import('@/components/GraphViewer.vue'))
 
 const loading = ref(true)
 const error = ref('')
@@ -308,6 +309,12 @@ onMounted(async () => {
 <style scoped>
 .home-page {
   padding-bottom: 3rem;
+}
+
+.state {
+  padding: 6rem 1.5rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
 }
 
 .profile-avatar-img {
