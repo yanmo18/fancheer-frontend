@@ -1,0 +1,50 @@
+/* 首页板块入场动画 — 各板块不同动效 */
+
+.reveal {
+  opacity: 0;
+  will-change: transform, opacity;
+  transition:
+    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal--banner {
+  transform: scale(1.02);
+  transition-duration: 0.9s;
+}
+
+.reveal--about {
+  transform: translateX(-36px);
+}
+
+.reveal--music {
+  transform: translateY(40px);
+  transition-delay: 0.05s;
+}
+
+.reveal--gallery {
+  transform: translateX(36px);
+}
+
+.reveal--events {
+  transform: translateY(32px) scale(0.98);
+  transition-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.reveal--graph {
+  transform: scale(0.96);
+  transition-duration: 0.85s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

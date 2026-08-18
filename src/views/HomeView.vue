@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import MusicPlayer from '@/components/MusicPlayer.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
+import RevealBlock from '@/components/RevealBlock.vue'
 import * as publicApi from '@/api/public'
 import { setPageMeta } from '@/utils/seo'
 import { formatActivityRange, getActivityStatus } from '@/utils/activity'
@@ -125,12 +126,14 @@ onMounted(async () => {
     <p v-else-if="error" class="state error">{{ error }}</p>
 
     <template v-else>
-      <BannerCarousel v-if="banners.length" :banners="banners" />
+      <RevealBlock v-if="banners.length" variant="banner">
+        <BannerCarousel :banners="banners" />
+      </RevealBlock>
 
-      <section v-if="streamer" class="section">
+      <RevealBlock v-if="streamer" variant="about" tag="section" class="section">
         <div class="section-header">
           <div>
-            <div class="section-label">ABOUT</div>
+            <div class="section-label">博主介绍</div>
             <div class="section-title">关于{{ streamer.name }}</div>
             <div class="section-line" />
           </div>
@@ -141,7 +144,7 @@ onMounted(async () => {
             <div class="profile-avatar">
               <div class="profile-avatar-inner">
                 <img v-if="streamer.avatarUrl" :src="streamer.avatarUrl" alt="" class="profile-avatar-img" />
-                <span v-else>🐱</span>
+                <span v-else class="avatar-fallback">{{ streamer.name.slice(0, 1) }}</span>
               </div>
             </div>
           </div>
@@ -173,7 +176,7 @@ onMounted(async () => {
 
         <div v-if="awards.length" class="awards-row">
           <article v-for="(award, i) in awards" :key="award.id" class="award-card">
-            <div class="award-icon">{{ ['🏆', '🎵', '⭐', '🎨'][i % 4] }}</div>
+            <div class="award-index">{{ String(i + 1).padStart(2, '0') }}</div>
             <div class="award-info">
               <div class="award-name">{{ award.title }}</div>
               <div class="award-date">
@@ -183,23 +186,28 @@ onMounted(async () => {
             </div>
           </article>
         </div>
-      </section>
+      </RevealBlock>
 
-      <section v-if="songs.length" class="section">
+      <RevealBlock v-if="songs.length" variant="music" tag="section" class="section">
         <div class="section-header">
           <div>
-            <div class="section-label">MUSIC</div>
+            <div class="section-label">原创作品</div>
             <div class="section-title">音乐作品</div>
             <div class="section-line" />
           </div>
         </div>
         <MusicPlayer :songs="songs" :streamer-name="streamer?.name" />
-      </section>
+      </RevealBlock>
 
-      <section v-if="galleryAnime.length || galleryReal.length" class="section">
+      <RevealBlock
+        v-if="galleryAnime.length || galleryReal.length"
+        variant="gallery"
+        tag="section"
+        class="section"
+      >
         <div class="section-header">
           <div>
-            <div class="section-label">GALLERY</div>
+            <div class="section-label">照片与插画</div>
             <div class="section-title">图集</div>
             <div class="section-line" />
           </div>
@@ -240,12 +248,12 @@ onMounted(async () => {
           <button type="button" class="gallery-arrow gallery-arrow-right" @click="scrollGallery(1)">›</button>
         </div>
         <p v-else class="state">该分类暂无图片</p>
-      </section>
+      </RevealBlock>
 
-      <section v-if="activities.length" class="section">
+      <RevealBlock v-if="activities.length" variant="events" tag="section" class="section">
         <div class="section-header">
           <div>
-            <div class="section-label">EVENTS</div>
+            <div class="section-label">行程记录</div>
             <div class="section-title">活动日历</div>
             <div class="section-line" />
           </div>
@@ -286,18 +294,18 @@ onMounted(async () => {
         >
           查看全部活动 →
         </button>
-      </section>
+      </RevealBlock>
 
-      <section v-if="graphData" class="section">
+      <RevealBlock v-if="graphData" variant="graph" tag="section" class="section">
         <div class="section-header">
           <div>
-            <div class="section-label">NETWORK</div>
+            <div class="section-label">人物关系</div>
             <div class="section-title">关系图谱</div>
             <div class="section-line" />
           </div>
         </div>
         <GraphViewer :data="graphData" />
-      </section>
+      </RevealBlock>
 
       <div v-if="previewImage" class="lightbox" @click="closePreview">
         <img :src="previewImage" alt="" @click.stop />
@@ -322,6 +330,23 @@ onMounted(async () => {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.avatar-fallback {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 3rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.award-index {
+  flex-shrink: 0;
+  width: 2rem;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  opacity: 0.7;
 }
 
 @media (max-width: 900px) {

@@ -1,4 +1,104 @@
 @import './styles/prototype.css';
+@import './styles/home-reveal.css';
+
+/* 去 AI 化：克制、偏编辑排版的视觉 */
+[data-theme='light'] {
+  --bg-primary: #f8f6f3;
+  --bg-secondary: #f0ece6;
+  --bg-card: #fffcf8;
+  --bg-card-hover: #f5f1eb;
+  --bg-elevated: #e8e2da;
+  --border-subtle: rgba(80, 70, 60, 0.1);
+  --border-medium: rgba(80, 70, 60, 0.16);
+  --accent-primary: #8f4a5c;
+  --accent-secondary: #a86555;
+  --accent-glow: rgba(143, 74, 92, 0.08);
+  --accent-gradient: linear-gradient(135deg, #8f4a5c 0%, #a86555 100%);
+  --accent-gradient-subtle: rgba(143, 74, 92, 0.06);
+  --gold: #a07c45;
+  --shadow-card: 0 1px 3px rgba(60, 50, 40, 0.06), 0 8px 24px rgba(60, 50, 40, 0.04);
+  --shadow-glow: none;
+  --nav-bg: rgba(248, 246, 243, 0.94);
+}
+
+.nav-logo-text,
+.profile-name,
+.auth-title,
+.not-found-page .code {
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.02em;
+}
+
+.nav-logo-sub {
+  letter-spacing: 0.04em;
+  font-size: 12px;
+}
+
+.section-label {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.section-line {
+  width: 36px;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 0;
+  margin-top: 12px;
+}
+
+.profile-card::before {
+  display: none;
+}
+
+.profile-card {
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.profile-avatar {
+  background: var(--border-medium);
+  box-shadow: none;
+}
+
+.profile-meta-value {
+  font-family: 'Noto Serif SC', serif;
+}
+
+.award-card {
+  border-radius: 10px;
+}
+
+.award-card::before {
+  display: none;
+}
+
+.btn-primary {
+  box-shadow: none;
+}
+
+.btn-primary:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.theme-toggle:hover {
+  border-color: var(--border-medium);
+}
+
+.top-nav {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
 
 :root,
 [data-theme='dark'],
