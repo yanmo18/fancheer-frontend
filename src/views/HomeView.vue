@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import MusicPlayer from '@/components/MusicPlayer.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
 import RevealBlock from '@/components/RevealBlock.vue'
+import ActivityListItem from '@/components/ActivityListItem.vue'
 import * as publicApi from '@/api/public'
 import { setPageMeta } from '@/utils/seo'
-import { formatActivityRange, getActivityStatus } from '@/utils/activity'
+import {
+  withDemoActivities,
+  withDemoAwards,
+  withDemoBanners,
+  withDemoGallery,
+  withDemoGraph,
+  withDemoSongs,
+  withDemoStreamer,
+} from '@/utils/demoContent'
 import type {
   ActivityItem,
   AwardItem,
@@ -31,15 +41,16 @@ const graphData = ref<GraphData | null>(null)
 const galleryTab = ref<'anime' | 'real'>('anime')
 const previewImage = ref<string | null>(null)
 const galleryScrollRef = ref<HTMLElement | null>(null)
-const showAllActivities = ref(false)
+
+const HOME_ACTIVITY_PREVIEW = 4
 
 const galleryList = computed(() =>
   galleryTab.value === 'anime' ? galleryAnime.value : galleryReal.value,
 )
 
-const visibleActivities = computed(() =>
-  showAllActivities.value ? activities.value : activities.value.slice(0, 5),
-)
+const previewActivities = computed(() => activities.value.slice(0, HOME_ACTIVITY_PREVIEW))
+
+const hasMoreActivities = computed(() => activities.value.length > HOME_ACTIVITY_PREVIEW)
 
 const identityTags = computed(() => {
   const tags = streamer.value?.tags
@@ -57,24 +68,6 @@ function closePreview() {
 
 function scrollGallery(dir: number) {
   galleryScrollRef.value?.scrollBy({ left: dir * 480, behavior: 'smooth' })
-}
-
-function activityDateParts(iso: string) {
-  const d = new Date(iso)
-  return { month: `${d.getMonth() + 1}月`, day: String(d.getDate()) }
-}
-
-function activityRowClass(index: number, act: ActivityItem) {
-  if (showAllActivities.value) return ''
-  const status = getActivityStatus(act.startTime, act.endTime).tone
-  if (status === 'ended' && index >= 3) return index === 3 ? 'faded' : 'faded-2'
-  return ''
-}
-
-function badgeClass(tone: string) {
-  if (tone === 'ongoing') return 'ongoing'
-  if (tone === 'upcoming') return 'upcoming'
-  return 'ended'
 }
 
 function formatAwardDate(iso?: string) {
@@ -96,15 +89,15 @@ onMounted(async () => {
       publicApi.getGallery('real'),
       publicApi.getGraph(),
     ])
-    streamer.value = info
-    banners.value = bannerList
-    awards.value = awardList
-    songs.value = songList
-    activities.value = activityList
-    galleryAnime.value = anime
-    galleryReal.value = real
-    graphData.value = graph.characters.length ? graph : null
-    galleryTab.value = anime.length ? 'anime' : 'real'
+    streamer.value = withDemoStreamer(info)
+    banners.value = withDemoBanners(bannerList)
+    awards.value = withDemoAwards(awardList)
+    songs.value = withDemoSongs(songList)
+    activities.value = withDemoActivities(activityList)
+    galleryAnime.value = withDemoGallery(anime, 'anime')
+    galleryReal.value = withDemoGallery(real, 'real')
+    graphData.value = withDemoGraph(graph.characters.length ? graph : null)
+    galleryTab.value = galleryAnime.value.length ? 'anime' : 'real'
     if (info.name) {
       setPageMeta({
         title: info.name,
@@ -258,42 +251,19 @@ onMounted(async () => {
             <div class="section-line" />
           </div>
         </div>
-        <div class="activity-list-wrapper">
+        <div class="activity-list-wrapper" :class="{ 'activity-list-wrapper--preview': hasMoreActivities }">
           <div class="activity-list">
-            <article
-              v-for="(act, index) in visibleActivities"
+            <ActivityListItem
+              v-for="act in previewActivities"
               :key="act.id"
-              class="activity-item"
-              :class="activityRowClass(index, act)"
-            >
-              <div class="activity-date">
-                <div class="activity-date-month">{{ activityDateParts(act.startTime).month }}</div>
-                <div class="activity-date-day">{{ activityDateParts(act.startTime).day }}</div>
-              </div>
-              <div class="activity-body">
-                <div class="activity-title">{{ act.title }}</div>
-                <div class="activity-desc">
-                  {{ act.description || formatActivityRange(act.startTime, act.endTime) }}
-                </div>
-              </div>
-              <div
-                class="activity-badge"
-                :class="badgeClass(getActivityStatus(act.startTime, act.endTime).tone)"
-              >
-                {{ getActivityStatus(act.startTime, act.endTime).label }}
-              </div>
-            </article>
+              :activity="act"
+            />
           </div>
-          <div v-if="!showAllActivities && activities.length > 5" class="activity-fade-overlay" />
+          <div v-if="hasMoreActivities" class="activity-fade-overlay" />
         </div>
-        <button
-          v-if="activities.length > 5 && !showAllActivities"
-          type="button"
-          class="activity-view-all-btn"
-          @click="showAllActivities = true"
-        >
+        <RouterLink v-if="hasMoreActivities" to="/activities" class="activity-view-all-btn">
           查看全部活动 →
-        </button>
+        </RouterLink>
       </RevealBlock>
 
       <RevealBlock v-if="graphData" variant="graph" tag="section" class="section">

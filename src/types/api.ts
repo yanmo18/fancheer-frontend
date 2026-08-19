@@ -14,6 +14,7 @@ export interface UserInfo {
   avatarUrl?: string
   avatarId?: string | null
   role: UserRole
+  createdAt?: string
 }
 
 export interface LoginResult {

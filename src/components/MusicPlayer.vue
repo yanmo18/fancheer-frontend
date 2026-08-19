@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import MusicBubbleCloud from '@/components/MusicBubbleCloud.vue'
 import type { SongItem } from '@/types/api'
 
 const props = defineProps<{
@@ -27,14 +28,13 @@ async function startPlayback(index: number) {
   }
 }
 
-function togglePlay(index?: number) {
-  if (typeof index === 'number') {
-    startPlayback(index)
+function togglePlayback() {
+  if (!currentSong.value) {
+    if (props.songs.length) startPlayback(0)
     return
   }
-  if (!currentSong.value) return
   if (!hasStarted.value) {
-    startPlayback(0)
+    startPlayback(currentIndex.value)
     return
   }
   if (isPlaying.value) {
@@ -48,6 +48,8 @@ function togglePlay(index?: number) {
     })
   }
 }
+
+const vinylActive = computed(() => isPlaying.value && hasStarted.value)
 
 function onEnded() {
   if (!props.songs.length) return
@@ -93,28 +95,16 @@ onBeforeUnmount(() => {
       @play="isPlaying = true"
     />
 
-    <div class="music-playlist">
-      <div
-        v-for="(song, index) in songs"
-        :key="song.id"
-        class="music-playlist-item"
-        :class="{ active: index === currentIndex && hasStarted }"
-        @click="startPlayback(index)"
-      >
-        <div class="music-playlist-cover">
-          <img v-if="song.coverUrl" :src="song.coverUrl" :alt="song.title" class="cover-img" />
-          <span v-else>🎵</span>
-        </div>
-        <div class="music-playlist-info">
-          <div class="music-playlist-title">{{ song.title }}</div>
-          <div class="music-playlist-artist">{{ song.artist || labelName }}</div>
-        </div>
-        <button type="button" class="music-playlist-btn" @click.stop="togglePlay(index)">▶</button>
-      </div>
-    </div>
+    <MusicBubbleCloud
+      :songs="songs"
+      :active-index="currentIndex"
+      :playing="isPlaying && hasStarted"
+      :focus-active="hasStarted"
+      @select="startPlayback"
+    />
 
-    <div class="vinyl-area">
-      <div class="vinyl-tonearm" :class="{ playing: isPlaying }">
+    <div class="vinyl-area" @click="togglePlayback">
+      <div class="vinyl-tonearm" :class="{ playing: vinylActive }">
         <div class="vinyl-tonearm-arm">
           <div class="vinyl-tonearm-pivot" />
           <div class="vinyl-tonearm-head">
@@ -122,25 +112,61 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
-      <div class="vinyl-record" :class="{ spinning: isPlaying }">
-        <div class="vinyl-label">
-          <span class="vinyl-label-text">{{ labelName }}</span>
-          <span class="vinyl-label-song">{{ currentSong?.title || '—' }}</span>
+      <button
+        type="button"
+        class="vinyl-record-btn"
+        :class="{ spinning: vinylActive, paused: hasStarted && !isPlaying }"
+        :aria-label="vinylActive ? '暂停播放' : '播放音乐'"
+        @click.stop="togglePlayback"
+      >
+        <div class="vinyl-record">
+          <div class="vinyl-label">
+            <span class="vinyl-label-text">{{ labelName }}</span>
+            <span class="vinyl-label-song">{{ currentSong?.title || '—' }}</span>
+          </div>
         </div>
-      </div>
+        <span v-if="hasStarted && !isPlaying" class="vinyl-play-badge" aria-hidden="true">▶</span>
+      </button>
       <div class="vinyl-song-name">{{ currentSong?.title || '选择一首歌曲' }}</div>
       <div class="vinyl-song-artist">
-        {{ currentSong ? (currentSong.artist || labelName) : '点击左侧列表播放' }}
+        {{ currentSong ? (currentSong.artist || labelName) : '点击左侧方块或唱片播放' }}
       </div>
+      <p class="vinyl-hint muted">{{ vinylActive ? '点击唱片暂停' : hasStarted ? '点击唱片继续播放' : '点击唱片开始播放' }}</p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
+.vinyl-record-btn {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.vinyl-record-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 6px;
+}
+
+.vinyl-play-badge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(20, 20, 20, 0.28);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.vinyl-hint {
+  margin: 0.5rem 0 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 </style>

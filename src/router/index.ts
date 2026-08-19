@@ -48,6 +48,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '每日打卡', description: '记录来访的每一天。' },
         },
         {
+          path: 'activities',
+          name: 'activities',
+          component: () => import('@/views/ActivitiesView.vue'),
+          meta: { title: '活动日历', description: '查看博主的全部活动与行程安排。' },
+        },
+        {
           path: 'terms',
           name: 'terms',
           component: () => import('@/views/TermsView.vue'),

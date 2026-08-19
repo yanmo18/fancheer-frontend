@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import * as authApi from '@/api/auth'
+import { isSameAvatarId, normalizeAvatarId } from '@/utils/avatar'
 
 const router = useRouter()
 
@@ -25,7 +26,10 @@ async function loadCaptcha() {
 onMounted(async () => {
   await loadCaptcha()
   try {
-    avatars.value = await authApi.getRegisterAvatars()
+    avatars.value = (await authApi.getRegisterAvatars()).map((item) => ({
+      id: normalizeAvatarId(item.id),
+      url: item.url,
+    }))
   } catch {
     /* optional avatars */
   }
@@ -82,8 +86,8 @@ async function submit() {
             :key="item.id"
             type="button"
             class="avatar-option"
-            :class="{ selected: selectedAvatarId === item.id }"
-            @click="selectedAvatarId = selectedAvatarId === item.id ? '' : item.id"
+            :class="{ selected: isSameAvatarId(selectedAvatarId, item.id) }"
+            @click="selectedAvatarId = isSameAvatarId(selectedAvatarId, item.id) ? '' : item.id"
           >
             <img :src="item.url" alt="" />
           </button>

@@ -21,11 +21,31 @@ http.interceptors.response.use(
 
 http.defaults.validateStatus = () => true
 
+function requestErrorMessage(status: number, fallback?: string) {
+  if (status === 502) {
+    return '后端未响应（502），请先运行 start.bat，或在后端目录执行 pnpm dev（默认端口 3001）'
+  }
+  if (status === 504) {
+    return '后端连接超时，请确认 fancheer-backend 已启动'
+  }
+  return fallback || '请求失败'
+}
+
 export async function request<T>(config: Parameters<typeof http.request>[0]): Promise<T> {
-  const res = await http.request<ApiResponse<T>>(config)
+  let res
+  try {
+    res = await http.request<ApiResponse<T>>(config)
+  } catch {
+    throw new Error('无法连接后端，请先运行 start.bat 启动前后端服务')
+  }
+
   const body = res.data
+  if (!body || typeof body !== 'object' || !('code' in body)) {
+    throw new Error(requestErrorMessage(res.status))
+  }
+
   if (body.code !== 0) {
-    throw new Error(body.msg || '请求失败')
+    throw new Error(body.msg || requestErrorMessage(res.status))
   }
   return body.data as T
 }

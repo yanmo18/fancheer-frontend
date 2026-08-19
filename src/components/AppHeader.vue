@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import * as publicApi from '@/api/public'
+import { resolveAvatarUrl } from '@/utils/avatar'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -43,8 +44,8 @@ function navActive(path: string) {
   return route.path.startsWith(path)
 }
 
-const avatarInitial = () =>
-  (auth.user?.nickname || auth.user?.username || '?').slice(0, 1).toUpperCase()
+const navAvatarUrl = () =>
+  resolveAvatarUrl(auth.user?.avatar, auth.user?.avatarUrl)
 </script>
 
 <template>
@@ -73,9 +74,18 @@ const avatarInitial = () =>
       </RouterLink>
       <RouterLink
         v-if="auth.isLoggedIn"
+        to="/checkin"
+        class="nav-link"
+        :class="{ active: navActive('/checkin') }"
+        @click="closeMenu"
+      >
+        每日打卡
+      </RouterLink>
+      <RouterLink
+        v-if="auth.isLoggedIn"
         to="/profile"
         class="nav-link"
-        :class="{ active: navActive('/profile') || navActive('/checkin') }"
+        :class="{ active: navActive('/profile') }"
         @click="closeMenu"
       >
         个人中心
@@ -94,12 +104,12 @@ const avatarInitial = () =>
       <template v-if="auth.isLoggedIn">
         <RouterLink to="/profile" class="nav-avatar nav-avatar-link" @click="closeMenu">
           <img
-            v-if="auth.user?.avatar || auth.user?.avatarUrl"
-            :src="auth.user.avatar || auth.user.avatarUrl"
+            v-if="navAvatarUrl()"
+            :src="navAvatarUrl()"
             alt=""
             class="nav-avatar-img"
           />
-          <span v-else>{{ avatarInitial() }}</span>
+          <span v-else>{{ (auth.user?.nickname || auth.user?.username || '?').slice(0, 1).toUpperCase() }}</span>
         </RouterLink>
         <button type="button" class="btn btn-ghost btn-sm nav-logout" @click="handleLogout">退出</button>
       </template>
@@ -182,7 +192,7 @@ const avatarInitial = () =>
   }
 
   .nav-right {
-    top: calc(60px + 11rem);
+    top: calc(60px + 13.5rem);
     flex-direction: row;
     flex-wrap: wrap;
     border-top: none;

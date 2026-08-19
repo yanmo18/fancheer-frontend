@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import * as userApi from '@/api/user'
+import * as checkinApi from '@/api/checkin'
 import type { UserRole } from '@/types/api'
+import { isSameAvatarId, normalizeAvatarId, resolveAvatarUrl } from '@/utils/avatar'
 
 const auth = useAuthStore()
 const nickname = ref('')
@@ -11,6 +12,7 @@ const avatars = ref<userApi.AvatarItem[]>([])
 const loading = ref(false)
 const message = ref('')
 const error = ref('')
+const checkinCount = ref<number | null>(null)
 
 const roleLabels: Record<UserRole, string> = {
   fan: '访客',
@@ -18,28 +20,68 @@ const roleLabels: Record<UserRole, string> = {
   streamer: '站主',
 }
 
-const currentAvatarUrl = computed(
-  () => auth.user?.avatar || auth.user?.avatarUrl || '',
+const selectedAvatarId = computed(() => normalizeAvatarId(auth.user?.avatarId))
+
+const currentAvatarUrl = computed(() => {
+  const fromUser = resolveAvatarUrl(auth.user?.avatar, auth.user?.avatarUrl)
+  if (fromUser) return fromUser
+
+  const picked = avatars.value.find((item) => isSameAvatarId(item.id, selectedAvatarId.value))
+  return picked?.url || ''
+})
+
+const joinDateLabel = computed(() => {
+  if (!auth.user?.createdAt) return '—'
+  const date = new Date(auth.user.createdAt)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+})
+
+const nicknameChanged = computed(
+  () => nickname.value.trim() !== (auth.user?.nickname || '').trim(),
 )
 
-const selectedAvatarId = computed(() => auth.user?.avatarId || '')
-
 onMounted(async () => {
-  nickname.value = auth.user?.nickname || ''
-  try {
-    avatars.value = await userApi.getAvatars()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '加载头像失败'
+  if (!auth.user) {
+    await auth.fetchMe()
   }
+
+  nickname.value = auth.user?.nickname || ''
+
+  const now = new Date()
+  await Promise.all([
+    userApi.getAvatars().then((list) => {
+      avatars.value = list.map((item) => ({
+        id: normalizeAvatarId(item.id),
+        url: item.url,
+      }))
+    }),
+    checkinApi
+      .getCalendar(now.getFullYear(), now.getMonth() + 1)
+      .then((data) => {
+        checkinCount.value = data.checkedDates.length
+      })
+      .catch(() => {
+        checkinCount.value = null
+      }),
+  ]).catch((e) => {
+    error.value = e instanceof Error ? e.message : '加载资料失败'
+  })
 })
 
 async function saveNickname() {
+  if (!nicknameChanged.value) {
+    message.value = '昵称未修改'
+    return
+  }
+
   loading.value = true
   message.value = ''
   error.value = ''
   try {
-    await userApi.updateNickname(nickname.value)
+    await userApi.updateNickname(nickname.value.trim())
     await auth.fetchMe()
+    nickname.value = auth.user?.nickname || ''
     message.value = '昵称已更新'
   } catch (e) {
     error.value = e instanceof Error ? e.message : '更新失败'
@@ -49,18 +91,25 @@ async function saveNickname() {
 }
 
 async function pickAvatar(id: string) {
+  const nextId = normalizeAvatarId(id)
+  if (!nextId || isSameAvatarId(nextId, selectedAvatarId.value)) return
+
   loading.value = true
   message.value = ''
   error.value = ''
   try {
-    await userApi.updateAvatar(id)
+    await userApi.updateAvatar(nextId)
     await auth.fetchMe()
     message.value = '头像已更新'
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '更新失败'
+    error.value = e instanceof Error ? e.message : '头像更新失败'
   } finally {
     loading.value = false
   }
+}
+
+function avatarInitial() {
+  return (auth.user?.nickname || auth.user?.username || '?').slice(0, 1).toUpperCase()
 }
 </script>
 
@@ -69,51 +118,73 @@ async function pickAvatar(id: string) {
     <div class="user-layout">
       <section class="user-card user-card-full">
         <h2 class="user-card-title"><span class="user-card-title-icon">👤</span>个人资料</h2>
+
         <div class="user-profile-head">
           <div class="user-profile-avatar">
-            <img v-if="currentAvatarUrl" :src="currentAvatarUrl" alt="" />
-            <span v-else>{{ (nickname || auth.user?.username || '?').slice(0, 1) }}</span>
+            <img v-if="currentAvatarUrl" :src="currentAvatarUrl" alt="" @error="($event.target as HTMLImageElement).style.visibility = 'hidden'" />
+            <span class="avatar-fallback">{{ avatarInitial() }}</span>
           </div>
           <div>
             <div class="user-profile-name">{{ auth.user?.nickname || auth.user?.username }}</div>
             <div class="user-profile-handle muted">@{{ auth.user?.username }}</div>
           </div>
         </div>
+
+        <div class="user-row">
+          <span class="user-row-label">用户名</span>
+          <span class="user-row-value">{{ auth.user?.username || '—' }}</span>
+        </div>
         <div class="user-row">
           <span class="user-row-label">角色</span>
           <span class="user-row-value">{{ auth.user?.role ? roleLabels[auth.user.role] : '—' }}</span>
         </div>
         <div class="user-row">
-          <span class="user-row-label">展示昵称</span>
-          <input v-model="nickname" class="user-text-input" maxlength="10" />
+          <span class="user-row-label">注册时间</span>
+          <span class="user-row-value">{{ joinDateLabel }}</span>
         </div>
-        <button type="button" class="user-btn user-btn-primary" :disabled="loading" @click="saveNickname">
-          保存昵称
-        </button>
+        <div class="user-row">
+          <span class="user-row-label">本月打卡</span>
+          <span class="user-row-value">
+            {{ checkinCount == null ? '—' : `${checkinCount} 天` }}
+          </span>
+        </div>
+
+        <div class="user-row user-row-edit">
+          <span class="user-row-label">展示昵称</span>
+          <input v-model="nickname" class="user-text-input" maxlength="10" placeholder="2-10 个字符" />
+        </div>
+        <div class="user-actions">
+          <button
+            type="button"
+            class="user-btn user-btn-primary"
+            :disabled="loading || !nicknameChanged"
+            @click="saveNickname"
+          >
+            保存昵称
+          </button>
+        </div>
       </section>
 
       <section class="user-card user-card-wide">
         <h2 class="user-card-title"><span class="user-card-title-icon">🎭</span>选择头像</h2>
-        <p v-if="!avatars.length" class="muted">暂无预设头像，请联系博主添加</p>
+        <p class="avatar-tip muted">从预设头像池中选择，将同步显示在导航栏与聊天室。</p>
+
+        <p v-if="!avatars.length" class="muted">暂无预设头像，请联系博主在后台添加。</p>
         <div v-else class="avatar-options">
           <button
             v-for="item in avatars"
             :key="item.id"
             type="button"
             class="avatar-option"
-            :class="{ selected: selectedAvatarId === item.id }"
+            :class="{ selected: isSameAvatarId(item.id, selectedAvatarId) }"
             :disabled="loading"
+            :aria-label="`选择头像 ${item.id}`"
             @click="pickAvatar(item.id)"
           >
-            <img :src="item.url" alt="" />
+            <img :src="item.url" alt="" loading="lazy" />
+            <span v-if="isSameAvatarId(item.id, selectedAvatarId)" class="avatar-option-check">✓</span>
           </button>
         </div>
-      </section>
-
-      <section class="user-card user-card-third">
-        <h2 class="user-card-title"><span class="user-card-title-icon">📅</span>快捷入口</h2>
-        <RouterLink to="/checkin" class="user-quick-link">每日打卡 →</RouterLink>
-        <RouterLink to="/messages" class="user-quick-link">聊天室 →</RouterLink>
       </section>
     </div>
 
@@ -131,6 +202,7 @@ async function pickAvatar(id: string) {
 }
 
 .user-profile-avatar {
+  position: relative;
   width: 72px;
   height: 72px;
   border-radius: 50%;
@@ -145,9 +217,18 @@ async function pickAvatar(id: string) {
 }
 
 .user-profile-avatar img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
 
 .user-profile-name {
@@ -161,16 +242,18 @@ async function pickAvatar(id: string) {
   margin-top: 0.25rem;
 }
 
-.user-quick-link {
-  display: block;
-  padding: 0.75rem 0;
-  color: var(--accent-primary);
-  text-decoration: none;
-  border-bottom: 1px solid var(--border-subtle);
+.user-row-edit {
+  margin-top: 0.5rem;
 }
 
-.user-quick-link:last-child {
-  border-bottom: none;
+.user-actions {
+  margin-top: 0.75rem;
+}
+
+.avatar-tip {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
 }
 
 .user-flash {
@@ -181,20 +264,33 @@ async function pickAvatar(id: string) {
 
 .avatar-options {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 0.875rem;
 }
 
 .avatar-option {
-  border: 2px solid transparent;
+  position: relative;
+  border: 2px solid var(--border-subtle);
   border-radius: 50%;
-  padding: 0;
-  background: none;
+  padding: 2px;
+  background: var(--bg-card);
   cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.avatar-option:hover:not(:disabled) {
+  border-color: var(--border-accent);
+  transform: translateY(-1px);
 }
 
 .avatar-option.selected {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.avatar-option:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .avatar-option img {
@@ -203,5 +299,20 @@ async function pickAvatar(id: string) {
   border-radius: 50%;
   object-fit: cover;
   display: block;
+}
+
+.avatar-option-check {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 0.625rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--bg-card);
 }
 </style>

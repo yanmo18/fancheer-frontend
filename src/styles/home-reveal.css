@@ -1,50 +1,434 @@
 /* 首页板块入场动画 — 各板块不同动效 */
 
+
+
 .reveal {
+
   opacity: 0;
-  will-change: transform, opacity;
+
+  will-change: transform, opacity, filter;
+
   transition:
-    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+
+    filter 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+
 }
+
+
 
 .reveal.is-visible {
+
   opacity: 1;
+
   transform: none;
+
+  filter: none;
+
 }
+
+
 
 .reveal--banner {
+
   transform: scale(1.02);
+
   transition-duration: 0.9s;
+
 }
 
+
+
 .reveal--about {
-  transform: translateX(-36px);
+
+  transform: translate3d(-56px, 32px, 0) scale(0.92);
+
+  filter: blur(6px);
+
+  transition-duration: 1.05s;
+
 }
+
+
+
+.reveal--about .section-header {
+
+  opacity: 0;
+
+  transform: translateY(24px);
+
+  transition:
+
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+
+}
+
+
+
+.reveal--about.is-visible .section-header {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.12s;
+
+}
+
+
+
+.reveal--about .profile-card {
+
+  opacity: 0;
+
+  transform: translateY(36px) scale(0.96);
+
+  transition:
+
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+
+    box-shadow 0.9s ease;
+
+}
+
+
+
+.reveal--about.is-visible .profile-card {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.22s;
+
+}
+
+
+
+.reveal--about .profile-avatar-wrapper {
+
+  opacity: 0;
+
+  transform: scale(0.72) rotate(-12deg);
+
+  transition:
+
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+
+    transform 0.85s cubic-bezier(0.34, 1.35, 0.64, 1);
+
+}
+
+
+
+.reveal--about.is-visible .profile-avatar-wrapper {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.38s;
+
+}
+
+
+
+.reveal--about .profile-name,
+
+.reveal--about .profile-identity,
+
+.reveal--about .profile-bio,
+
+.reveal--about .profile-meta-item {
+
+  opacity: 0;
+
+  transform: translateY(18px);
+
+  transition:
+
+    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+
+}
+
+
+
+.reveal--about.is-visible .profile-name {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.48s;
+
+}
+
+
+
+.reveal--about.is-visible .profile-identity {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.56s;
+
+}
+
+
+
+.reveal--about.is-visible .profile-bio {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.64s;
+
+}
+
+
+
+.reveal--about.is-visible .profile-meta-item:nth-child(1) {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.72s;
+
+}
+
+
+
+.reveal--about.is-visible .profile-meta-item:nth-child(2) {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.8s;
+
+}
+
+
+
+.reveal--about.is-visible .profile-meta-item:nth-child(3) {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.88s;
+
+}
+
+
+
+.reveal--about .awards-row {
+
+  opacity: 0;
+
+  transform: translateY(28px);
+
+  transition:
+
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+
+}
+
+
+
+.reveal--about.is-visible .awards-row {
+
+  opacity: 1;
+
+  transform: none;
+
+  transition-delay: 0.95s;
+
+}
+
+
+
+.reveal--about.is-visible .award-card {
+
+  animation: aboutAwardPop 0.7s cubic-bezier(0.34, 1.25, 0.64, 1) both;
+
+}
+
+
+
+.reveal--about.is-visible .award-card:nth-child(1) {
+
+  animation-delay: 1.05s;
+
+}
+
+
+
+.reveal--about.is-visible .award-card:nth-child(2) {
+
+  animation-delay: 1.15s;
+
+}
+
+
+
+.reveal--about.is-visible .award-card:nth-child(3) {
+
+  animation-delay: 1.25s;
+
+}
+
+
+
+@keyframes aboutAwardPop {
+
+  from {
+
+    opacity: 0;
+
+    transform: translateY(16px) scale(0.94);
+
+  }
+
+  to {
+
+    opacity: 1;
+
+    transform: none;
+
+  }
+
+}
+
+
 
 .reveal--music {
   transform: translateY(40px);
   transition-delay: 0.05s;
 }
 
-.reveal--gallery {
-  transform: translateX(36px);
+.reveal--music .music-bubble-cloud {
+  opacity: 0;
+  transform: translate3d(-64px, 24px, 0) scale(0.94) rotate(-2deg);
+  filter: blur(4px);
+  transition:
+    opacity 0.95s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.95s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.95s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.reveal--events {
-  transform: translateY(32px) scale(0.98);
-  transition-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
+.reveal--music.is-visible .music-bubble-cloud {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition-delay: 0.18s;
 }
 
-.reveal--graph {
-  transform: scale(0.96);
-  transition-duration: 0.85s;
+.reveal--music .vinyl-area {
+  opacity: 0;
+  transform: translate3d(64px, 28px, 0) scale(0.9) rotate(2deg);
+  filter: blur(5px);
+  transition:
+    opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
+.reveal--music.is-visible .vinyl-area {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition-delay: 0.34s;
+}
+
+.reveal--music.is-visible .vinyl-tonearm {
+  animation: tonearmSettle 0.9s cubic-bezier(0.34, 1.2, 0.64, 1) 0.55s both;
+}
+
+@keyframes tonearmSettle {
+  from {
+    transform: rotate(-58deg);
+  }
+  to {
+    transform: rotate(-44deg);
   }
 }
+
+.reveal--music.is-visible .vinyl-tonearm.playing {
+  animation: none;
+  transform: rotate(-7deg);
+}
+
+
+
+.reveal--gallery {
+
+  transform: translateX(36px);
+
+}
+
+
+
+.reveal--events {
+
+  transform: translateY(32px) scale(0.98);
+
+  transition-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
+
+}
+
+
+
+.reveal--graph {
+
+  transform: scale(0.96);
+
+  transition-duration: 0.85s;
+
+}
+
+
+
+@media (prefers-reduced-motion: reduce) {
+
+  .reveal,
+
+  .reveal--about .section-header,
+
+  .reveal--about .profile-card,
+
+  .reveal--about .profile-avatar-wrapper,
+
+  .reveal--about .profile-name,
+
+  .reveal--about .profile-identity,
+
+  .reveal--about .profile-bio,
+
+  .reveal--about .profile-meta-item,
+
+  .reveal--about .awards-row,
+  .reveal--music .music-bubble-cloud,
+  .reveal--music .vinyl-area {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+    animation: none;
+  }
+}
+

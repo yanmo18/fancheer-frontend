@@ -198,7 +198,13 @@ onMounted(load)
           <input v-model="form.artist" maxlength="100" />
         </label>
         <AudioUpload v-model="form.audioUrl" />
-        <ImageUpload v-model="form.coverUrl" category="songs" label="封面（可选）" />
+        <ImageUpload
+          v-model="form.coverUrl"
+          category="songs"
+          label="方形封面"
+          hint="用于首页音乐词云展示，建议 1:1 比例"
+          square-preview
+        />
         <label>
           排序（越大越靠前）
           <input v-model.number="form.sortOrder" type="number" />

@@ -7,8 +7,10 @@ const props = withDefaults(
     modelValue: string
     category?: string
     label?: string
+    hint?: string
+    squarePreview?: boolean
   }>(),
-  { category: 'banners', label: '图片' },
+  { category: 'banners', label: '图片', hint: '', squarePreview: false },
 )
 
 const emit = defineEmits<{
@@ -44,7 +46,14 @@ async function onFileChange(e: Event) {
       <input type="file" accept="image/*" :disabled="uploading" @change="onFileChange" />
       <span v-if="uploading" class="muted">上传中...</span>
     </div>
-    <img v-if="modelValue" :src="modelValue" alt="" class="preview" />
+    <img
+      v-if="modelValue"
+      :src="modelValue"
+      alt=""
+      class="preview"
+      :class="{ square: squarePreview }"
+    />
+    <p v-if="hint" class="hint muted">{{ hint }}</p>
     <input
       :value="modelValue"
       class="url-input"
@@ -79,6 +88,19 @@ async function onFileChange(e: Event) {
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--border);
+}
+
+.preview.square {
+  width: 120px;
+  height: 120px;
+  max-height: none;
+  aspect-ratio: 1;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
 .url-input {

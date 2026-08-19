@@ -3,10 +3,12 @@ import { onMounted, reactive, ref } from 'vue'
 import * as bannerApi from '@/api/admin/banner'
 import type { AdminBannerItem } from '@/api/admin/banner'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import { MAX_HOME_BANNERS } from '@/constants/banner'
 
 const list = ref<AdminBannerItem[]>([])
 const page = ref(1)
 const totalPages = ref(1)
+const totalCount = ref(0)
 const loading = ref(false)
 const error = ref('')
 const message = ref('')
@@ -37,6 +39,7 @@ async function load() {
     const data = await bannerApi.getAdminBanners(page.value)
     list.value = data.list
     totalPages.value = data.pagination.totalPages
+    totalCount.value = data.pagination.total
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
@@ -45,6 +48,10 @@ async function load() {
 }
 
 function openCreate() {
+  if (totalCount.value >= MAX_HOME_BANNERS) {
+    error.value = `首页 Banner 最多 ${MAX_HOME_BANNERS} 张，请先删除后再新增`
+    return
+  }
   resetForm()
   showForm.value = true
 }
@@ -133,9 +140,16 @@ onMounted(load)
     <header class="page-header">
       <div>
         <h1>Banner 管理</h1>
-        <p class="muted">管理首页轮播展示内容</p>
+        <p class="muted">管理首页轮播展示内容（最多 {{ MAX_HOME_BANNERS }} 张，当前 {{ totalCount }} 张）</p>
       </div>
-      <button type="button" class="btn btn-primary" @click="openCreate">新增 Banner</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        :disabled="totalCount >= MAX_HOME_BANNERS"
+        @click="openCreate"
+      >
+        新增 Banner
+      </button>
     </header>
 
     <p v-if="message" class="success">{{ message }}</p>
