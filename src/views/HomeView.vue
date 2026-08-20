@@ -32,6 +32,7 @@ const GraphViewer = defineAsyncComponent(() => import('@/components/GraphViewer.
 
 const loading = ref(true)
 const error = ref('')
+const loadWarning = ref('')
 const streamer = ref<StreamerInfo | null>(null)
 const banners = ref<BannerItem[]>([])
 const awards = ref<AwardItem[]>([])
@@ -115,40 +116,95 @@ function formatAwardDate(iso?: string) {
 }
 
 onMounted(async () => {
-  try {
-    const [info, bannerList, awardList, songList, activityList, anime, real, graph] = await Promise.all([
-      publicApi.getStreamerInfo(),
-      publicApi.getBanners(),
-      publicApi.getAwards(),
-      publicApi.getSongs(),
-      publicApi.getActivities(),
-      publicApi.getGallery('anime'),
-      publicApi.getGallery('real'),
-      publicApi.getGraph(),
-    ])
-    streamer.value = withDemoStreamer(info)
-    banners.value = withDemoBanners(bannerList)
-    awards.value = withDemoAwards(awardList)
-    songs.value = withDemoSongs(songList)
-    activities.value = withDemoActivities(activityList)
-    galleryAnime.value = withDemoGallery(anime, 'anime')
-    galleryReal.value = withDemoGallery(real, 'real')
-    graphData.value = withDemoGraph(graph.characters.length ? graph : null)
-    galleryTab.value = galleryAnime.value.length ? 'anime' : 'real'
-    if (info.name) {
+  const labels = ['博主资料', 'Banner', '荣誉', '音乐', '活动', '二次元图集', '真人图集', '关系图谱']
+  const results = await Promise.allSettled([
+    publicApi.getStreamerInfo(),
+    publicApi.getBanners(),
+    publicApi.getAwards(),
+    publicApi.getSongs(),
+    publicApi.getActivities(),
+    publicApi.getGallery('anime'),
+    publicApi.getGallery('real'),
+    publicApi.getGraph(),
+  ])
+
+  const failed: string[] = []
+
+  if (results[0].status === 'fulfilled') {
+    streamer.value = withDemoStreamer(results[0].value)
+    if (results[0].value.name) {
       setPageMeta({
-        title: info.name,
-        description: info.bio?.slice(0, 120) || undefined,
+        title: results[0].value.name,
+        description: results[0].value.bio?.slice(0, 120) || undefined,
         path: '/',
       })
     }
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '加载失败'
-  } finally {
-    loading.value = false
-    await nextTick()
-    galleryAutoScroll.start()
+  } else {
+    streamer.value = withDemoStreamer(null)
+    failed.push(labels[0])
   }
+
+  if (results[1].status === 'fulfilled') {
+    banners.value = withDemoBanners(results[1].value)
+  } else {
+    banners.value = withDemoBanners([])
+    failed.push(labels[1])
+  }
+
+  if (results[2].status === 'fulfilled') {
+    awards.value = withDemoAwards(results[2].value)
+  } else {
+    awards.value = withDemoAwards([])
+    failed.push(labels[2])
+  }
+
+  if (results[3].status === 'fulfilled') {
+    songs.value = withDemoSongs(results[3].value)
+  } else {
+    songs.value = withDemoSongs([])
+    failed.push(labels[3])
+  }
+
+  if (results[4].status === 'fulfilled') {
+    activities.value = withDemoActivities(results[4].value)
+  } else {
+    activities.value = withDemoActivities([])
+    failed.push(labels[4])
+  }
+
+  if (results[5].status === 'fulfilled') {
+    galleryAnime.value = withDemoGallery(results[5].value, 'anime')
+  } else {
+    galleryAnime.value = withDemoGallery([], 'anime')
+    failed.push(labels[5])
+  }
+
+  if (results[6].status === 'fulfilled') {
+    galleryReal.value = withDemoGallery(results[6].value, 'real')
+  } else {
+    galleryReal.value = withDemoGallery([], 'real')
+    failed.push(labels[6])
+  }
+
+  if (results[7].status === 'fulfilled') {
+    const graph = results[7].value
+    graphData.value = withDemoGraph(graph.characters.length ? graph : null)
+  } else {
+    graphData.value = withDemoGraph(null)
+    failed.push(labels[7])
+  }
+
+  galleryTab.value = galleryAnime.value.length ? 'anime' : 'real'
+
+  if (failed.length === labels.length) {
+    error.value = '首页数据加载失败，请稍后刷新'
+  } else if (failed.length) {
+    loadWarning.value = `部分模块加载失败：${failed.join('、')}`
+  }
+
+  loading.value = false
+  await nextTick()
+  galleryAutoScroll.start()
 })
 </script>
 
@@ -158,6 +214,7 @@ onMounted(async () => {
     <p v-else-if="error" class="state error">{{ error }}</p>
 
     <template v-else>
+      <p v-if="loadWarning" class="state muted">{{ loadWarning }}</p>
       <RevealBlock v-if="banners.length" variant="banner">
         <BannerCarousel :banners="banners" />
       </RevealBlock>

@@ -2,14 +2,29 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from '@/stores/auth'
+import { onSessionExpired } from '@/utils/sessionExpired'
 import './style.css'
 
 const app = createApp(App)
+const pinia = createPinia()
 
 app.config.errorHandler = (err, _instance, info) => {
   console.error('[vue]', info, err)
 }
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
+
+onSessionExpired(() => {
+  const auth = useAuthStore()
+  auth.clearSession()
+  const { name, meta, fullPath } = router.currentRoute.value
+  if (meta.requiresAuth || meta.requiresAdmin) {
+    void router.push({ name: 'login', query: { redirect: fullPath } })
+  } else if (name !== 'login' && name !== 'register') {
+    void router.push({ name: 'login', query: { redirect: fullPath } })
+  }
+})
+
 app.mount('#app')

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import * as messagesApi from '@/api/messages'
+import { useAuthStore } from '@/stores/auth'
 import type { MessageItem, PrivateReplyItem, PublicReplyItem, SentPrivateMessageItem } from '@/types/api'
 import { formatDateTime } from '@/utils/datetime'
 
 type Tab = 'public' | 'private'
 
+const auth = useAuthStore()
 const tab = ref<Tab>('public')
 const messages = ref<MessageItem[]>([])
 const publicReplies = ref<PublicReplyItem[]>([])
@@ -20,6 +22,8 @@ const error = ref('')
 const success = ref('')
 
 const PAGE_SIZE = 20
+
+const canUsePrivateTab = computed(() => auth.role === 'fan')
 
 const reportTarget = ref<MessageItem | null>(null)
 const reportReason = ref('')
@@ -101,6 +105,30 @@ const composePlaceholder = computed(() =>
   tab.value === 'public' ? '写下你的公开留言...' : '仅博主可见的私密留言...',
 )
 
+async function refreshAfterSend() {
+  error.value = ''
+  try {
+    if (tab.value === 'public') {
+      const [msgList, replies] = await Promise.all([
+        messagesApi.getPublicMessages({ limit: PAGE_SIZE }),
+        messagesApi.getPublicReplies({ limit: 10 }),
+      ])
+      messages.value = msgList
+      hasMoreMessages.value = msgList.length >= PAGE_SIZE
+      publicReplies.value = replies
+    } else {
+      const [replies, sent] = await Promise.all([
+        messagesApi.getPrivateReplies(),
+        messagesApi.getSentPrivateMessages(),
+      ])
+      privateReplies.value = replies.list
+      sentPrivateMessages.value = sent.list
+    }
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '刷新失败'
+  }
+}
+
 async function send() {
   if (!content.value.trim()) return
   sending.value = true
@@ -110,7 +138,7 @@ async function send() {
     await messagesApi.sendMessage(content.value.trim(), tab.value)
     content.value = ''
     success.value = tab.value === 'public' ? '留言已发布' : '私密留言已发送，博主回复后会显示在这里'
-    await load()
+    await refreshAfterSend()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '发送失败'
   } finally {
@@ -119,19 +147,29 @@ async function send() {
 }
 
 async function toggleLike(msg: MessageItem) {
+  const prevLiked = isLiked(msg)
+  const prevCount = msg.likeCount
+
+  if (prevLiked) {
+    msg.isLiked = false
+    msg.liked = false
+    msg.likeCount = Math.max(0, prevCount - 1)
+  } else {
+    msg.isLiked = true
+    msg.liked = true
+    msg.likeCount = prevCount + 1
+  }
+
   try {
-    if (isLiked(msg)) {
+    if (prevLiked) {
       await messagesApi.unlikeMessage(msg.id)
-      msg.isLiked = false
-      msg.liked = false
-      msg.likeCount = Math.max(0, msg.likeCount - 1)
     } else {
       await messagesApi.likeMessage(msg.id)
-      msg.isLiked = true
-      msg.liked = true
-      msg.likeCount += 1
     }
   } catch (e) {
+    msg.isLiked = prevLiked
+    msg.liked = prevLiked
+    msg.likeCount = prevCount
     error.value = e instanceof Error ? e.message : '操作失败'
   }
 }
@@ -167,6 +205,12 @@ watch(tab, () => {
   load()
 })
 
+watch(canUsePrivateTab, (allowed) => {
+  if (!allowed && tab.value === 'private') {
+    tab.value = 'public'
+  }
+})
+
 onMounted(load)
 </script>
 
@@ -181,7 +225,13 @@ onMounted(load)
       <button type="button" class="chat-mode-btn" :class="{ active: tab === 'public' }" @click="tab = 'public'">
         <span class="chat-mode-dot" />公开留言
       </button>
-      <button type="button" class="chat-mode-btn" :class="{ active: tab === 'private' }" @click="tab = 'private'">
+      <button
+        v-if="canUsePrivateTab"
+        type="button"
+        class="chat-mode-btn"
+        :class="{ active: tab === 'private' }"
+        @click="tab = 'private'"
+      >
         <span class="chat-mode-dot" />私信博主
       </button>
     </div>

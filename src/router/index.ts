@@ -115,12 +115,7 @@ router.beforeEach(async (to) => {
 
   if (auth.token && !auth.user) {
     if (needsSession) {
-      await Promise.race([
-        auth.fetchMe(),
-        new Promise<void>((resolve) => {
-          window.setTimeout(resolve, 5000)
-        }),
-      ])
+      await auth.fetchMe()
     } else {
       void auth.fetchMe()
     }

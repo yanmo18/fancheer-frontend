@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { safeRedirect } from '@/utils/safeRedirect'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -17,8 +18,7 @@ async function submit() {
   loading.value = true
   try {
     await auth.login(username.value, password.value)
-    const redirect = (route.query.redirect as string) || '/'
-    router.push(redirect)
+    router.push(safeRedirect(route.query.redirect))
   } catch (e) {
     error.value = e instanceof Error ? e.message : '登录失败'
   } finally {

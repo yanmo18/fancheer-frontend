@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { ApiResponse } from '@/types/api'
+import { notifySessionExpired } from '@/utils/sessionExpired'
 
 const http = axios.create({
   baseURL: '',
@@ -42,6 +43,11 @@ export async function request<T>(config: Parameters<typeof http.request>[0]): Pr
   const body = res.data
   if (!body || typeof body !== 'object' || !('code' in body)) {
     throw new Error(requestErrorMessage(res.status))
+  }
+
+  if (body.code === 401 || res.status === 401) {
+    notifySessionExpired()
+    throw new Error(body.msg || '登录已失效，请重新登录')
   }
 
   if (body.code !== 0) {
