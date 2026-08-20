@@ -21,8 +21,7 @@ import type {
 } from '@/types/api'
 
 export function isMissingMediaUrl(url?: string | null) {
-  if (!url?.trim()) return true
-  return url.startsWith('/uploads/')
+  return !url?.trim()
 }
 
 function pickByIndex<T>(items: readonly T[], index: number) {

@@ -759,17 +759,35 @@ input, textarea, select { font-family: inherit; outline: none; }
   border-color: var(--border-accent); color: var(--accent-primary);
 }
 
-.gallery-scroll-wrapper { position: relative; }
+.gallery-scroll-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
 .gallery-scroll {
-  display: flex; gap: 16px;
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
   padding-bottom: 12px;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
 }
-.gallery-scroll::-webkit-scrollbar { height: 4px; }
-.gallery-scroll::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 2px; }
-.gallery-scroll::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 2px; }
+
+.gallery-scroll--auto {
+  scrollbar-width: none;
+}
+
+.gallery-scroll--auto::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+
+.gallery-scroll:not(.gallery-scroll--auto)::-webkit-scrollbar { height: 4px; }
+.gallery-scroll:not(.gallery-scroll--auto)::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 2px; }
+.gallery-scroll:not(.gallery-scroll--auto)::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 2px; }
 
 .gallery-scroll-item {
   flex-shrink: 0;
@@ -881,8 +899,12 @@ input, textarea, select { font-family: inherit; outline: none; }
 }
 
 .activity-list-wrapper--preview {
-  max-height: 22rem;
+  max-height: 26rem;
   overflow: hidden;
+}
+
+.activity-home-panel .activity-view-all-btn {
+  margin-top: 1.25rem;
 }
 
 .activity-view-all-btn {

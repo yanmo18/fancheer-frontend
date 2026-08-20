@@ -154,7 +154,7 @@ onMounted(load)
           <tr>
             <th>封面</th>
             <th>标题</th>
-            <th>艺术家</th>
+            <th>歌手</th>
             <th>排序</th>
             <th>操作</th>
           </tr>
@@ -194,7 +194,7 @@ onMounted(load)
           <input v-model="form.title" maxlength="100" required />
         </label>
         <label>
-          艺术家
+          歌手
           <input v-model="form.artist" maxlength="100" />
         </label>
         <AudioUpload v-model="form.audioUrl" />

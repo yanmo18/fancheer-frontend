@@ -40,7 +40,7 @@ async function onFileChange(e: Event) {
   <div class="audio-upload">
     <label class="label">{{ label }}</label>
     <div class="row">
-      <input type="file" accept="audio/*" :disabled="uploading" @change="onFileChange" />
+      <input type="file" accept="audio/*,.m4a,audio/mp4,audio/x-m4a" :disabled="uploading" @change="onFileChange" />
       <span v-if="uploading" class="muted">上传中...</span>
     </div>
     <audio v-if="modelValue" controls :src="modelValue" class="preview" />
