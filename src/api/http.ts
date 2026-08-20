@@ -2,8 +2,10 @@ import axios from 'axios'
 import type { ApiResponse } from '@/types/api'
 import { notifySessionExpired } from '@/utils/sessionExpired'
 
+// baseURL 默认空：开发走 Vite proxy、生产走 nginx 反代，请求路径都是相对的
+// 仅当前后端分域名且不通过反代暴露时，配置 VITE_API_BASE=https://api.example.com
 const http = axios.create({
-  baseURL: '',
+  baseURL: import.meta.env.VITE_API_BASE ?? '',
   timeout: 15000,
 })
 

@@ -94,29 +94,16 @@ export function withDemoGallery(items: GalleryItem[], category: 'anime' | 'real'
           title: item.title,
         }))
 
+  // 库里无数据时，使用演示池兜底，避免首页空白
   if (!items.length) return pool
 
-  const normalized = items.map((item, index) =>
+  // 库里有数据时，只替换空 URL 项，不再强行补齐到 demo 池数量
+  // 这样前端展示数量与数据库实际数量保持一致
+  return items.map((item, index) =>
     isMissingMediaUrl(item.imageUrl)
       ? { ...item, imageUrl: pickByIndex(pool.map((p) => p.imageUrl), index) }
       : item,
   )
-
-  const existingUrls = new Set(normalized.map((item) => item.imageUrl))
-  const merged = [...normalized]
-
-  for (const demo of pool) {
-    if (merged.length >= pool.length) break
-    if (!existingUrls.has(demo.imageUrl)) {
-      merged.push({
-        ...demo,
-        id: `${demo.id}-extra`,
-      })
-      existingUrls.add(demo.imageUrl)
-    }
-  }
-
-  return merged
 }
 
 export function withDemoGraph(graph: GraphData | null): GraphData | null {
