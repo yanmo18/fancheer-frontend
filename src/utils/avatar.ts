@@ -12,9 +12,7 @@ export function isSameAvatarId(a?: string | number | null, b?: string | number |
 
 export function resolveAvatarUrl(...candidates: Array<string | undefined | null>) {
   for (const url of candidates) {
-    if (!url?.trim()) continue
-    if (url.startsWith('/uploads/')) continue
-    return url
+    if (url?.trim()) return url.trim()
   }
   return ''
 }

@@ -30,7 +30,7 @@ function isLiked(msg: MessageItem) {
 
 function beforeCursor(items: MessageItem[]) {
   const last = items[items.length - 1]
-  return last ? String(last.createdAt) : undefined
+  return last ? String(last.id) : undefined
 }
 
 function authorInitial(name?: string) {

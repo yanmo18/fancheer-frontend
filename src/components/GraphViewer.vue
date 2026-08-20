@@ -83,9 +83,7 @@ function resolveImageUrl(url: string) {
 }
 
 function isUsableAvatarUrl(url?: string | null) {
-  if (!url?.trim()) return false
-  if (url.startsWith('/uploads/')) return false
-  return true
+  return Boolean(url?.trim())
 }
 
 function nodeLabelInside(name: string, isCenter: boolean) {
