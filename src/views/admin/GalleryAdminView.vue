@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import * as galleryApi from '@/api/admin/gallery'
 import type { AdminGalleryItem, GalleryCategory } from '@/api/admin/gallery'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import AppModal from '@/components/AppModal.vue'
 
 const categoryLabels: Record<GalleryCategory, string> = {
   anime: '二次元',
@@ -187,9 +188,9 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
 
-    <div v-if="showForm" class="modal-mask" @click.self="closeForm">
+    <AppModal :open="showForm" title-id="gallery-admin-modal-title" @close="closeForm">
       <form class="card modal" @submit.prevent="submit">
-        <h2>{{ editingId ? '编辑图片' : '新增图片' }}</h2>
+        <h2 id="gallery-admin-modal-title">{{ editingId ? '编辑图片' : '新增图片' }}</h2>
         <ImageUpload v-model="form.imageUrl" category="gallery" />
         <label>
           分类 *
@@ -211,7 +212,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">保存</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

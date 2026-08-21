@@ -5,6 +5,7 @@ import type { AdminUserItem } from '@/api/admin/user'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import type { UserRole } from '@/types/api'
+import AppModal from '@/components/AppModal.vue'
 
 const auth = useAuthStore()
 
@@ -257,9 +258,9 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
 
-    <div v-if="showBanForm && banTarget" class="modal-mask" @click.self="closeBanForm">
+    <AppModal v-if="banTarget" :open="showBanForm" title-id="user-ban-modal-title" @close="closeBanForm">
       <form class="card modal" @submit.prevent="submitBan">
-        <h2>封禁用户</h2>
+        <h2 id="user-ban-modal-title">封禁用户</h2>
         <p class="muted">用户：{{ banTarget.nickname }}（{{ banTarget.username }}）</p>
         <label>
           封禁备注 *
@@ -276,7 +277,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary danger" :disabled="loading">确认封禁</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

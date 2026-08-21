@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import * as activityApi from '@/api/admin/activity'
 import type { AdminActivityItem } from '@/api/admin/activity'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import AppModal from '@/components/AppModal.vue'
 import { formatDateTime, fromDatetimeLocalValue, toDatetimeLocalValue } from '@/utils/datetime'
 
 const list = ref<AdminActivityItem[]>([])
@@ -192,9 +193,9 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
 
-    <div v-if="showForm" class="modal-mask" @click.self="closeForm">
+    <AppModal :open="showForm" title-id="activity-admin-modal-title" @close="closeForm">
       <form class="card modal" @submit.prevent="submit">
-        <h2>{{ editingId ? '编辑活动' : '新增活动' }}</h2>
+        <h2 id="activity-admin-modal-title">{{ editingId ? '编辑活动' : '新增活动' }}</h2>
         <label>
           活动标题 *
           <input v-model="form.title" maxlength="100" required />
@@ -221,7 +222,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">保存</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

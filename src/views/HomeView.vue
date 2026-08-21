@@ -5,8 +5,8 @@ import MusicPlayer from '@/components/MusicPlayer.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
 import RevealBlock from '@/components/RevealBlock.vue'
 import ActivityListItem from '@/components/ActivityListItem.vue'
+import AppModal from '@/components/AppModal.vue'
 import { useGalleryAutoScroll } from '@/composables/useGalleryAutoScroll'
-import { useFocusTrap } from '@/composables/useFocusTrap'
 import * as publicApi from '@/api/public'
 import { setPageMeta } from '@/utils/seo'
 import {
@@ -45,7 +45,6 @@ const galleryReal = ref<GalleryItem[]>([])
 const graphData = ref<GraphData | null>(null)
 const galleryTab = ref<'anime' | 'real'>('anime')
 const previewIndex = ref<number | null>(null)
-const lightboxRef = ref<HTMLElement | null>(null)
 const galleryScrollRef = ref<HTMLElement | null>(null)
 
 const HOME_ACTIVITY_PREVIEW = 4
@@ -67,8 +66,6 @@ const previewTitle = computed(() => {
 })
 
 const galleryPreviewOpen = computed(() => previewIndex.value !== null)
-
-useFocusTrap(lightboxRef, galleryPreviewOpen)
 
 const galleryAutoScroll = useGalleryAutoScroll(galleryScrollRef, {
   itemCount: galleryItemCount,
@@ -477,37 +474,36 @@ onMounted(async () => {
         <GraphViewer :data="graphData" />
       </RevealBlock>
 
-      <div
-        v-if="previewImage"
-        ref="lightboxRef"
-        class="lightbox"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="previewTitle"
-        tabindex="-1"
-        @click="closePreview"
+      <AppModal
+        :open="galleryPreviewOpen"
+        variant="lightbox"
+        title-id="gallery-preview-title"
+        @close="closePreview"
       >
-        <button type="button" class="lightbox-close" aria-label="关闭预览" @click.stop="closePreview">×</button>
-        <button
-          v-if="galleryList.length > 1"
-          type="button"
-          class="lightbox-nav lightbox-prev"
-          aria-label="上一张"
-          @click.stop="shiftPreview(-1)"
-        >
-          ‹
-        </button>
-        <img :src="previewImage" :alt="previewTitle" @click.stop />
-        <button
-          v-if="galleryList.length > 1"
-          type="button"
-          class="lightbox-nav lightbox-next"
-          aria-label="下一张"
-          @click.stop="shiftPreview(1)"
-        >
-          ›
-        </button>
-      </div>
+        <div class="gallery-lightbox">
+          <span id="gallery-preview-title" class="sr-only">{{ previewTitle }}</span>
+          <button type="button" class="lightbox-close" aria-label="关闭预览" @click.stop="closePreview">×</button>
+          <button
+            v-if="galleryList.length > 1"
+            type="button"
+            class="lightbox-nav lightbox-prev"
+            aria-label="上一张"
+            @click.stop="shiftPreview(-1)"
+          >
+            ‹
+          </button>
+          <img v-if="previewImage" :src="previewImage" :alt="previewTitle" @click.stop />
+          <button
+            v-if="galleryList.length > 1"
+            type="button"
+            class="lightbox-nav lightbox-next"
+            aria-label="下一张"
+            @click.stop="shiftPreview(1)"
+          >
+            ›
+          </button>
+        </div>
+      </AppModal>
     </template>
   </div>
 </template>
@@ -632,6 +628,31 @@ onMounted(async () => {
 .gallery-scroll-item:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+.gallery-lightbox {
+  position: relative;
+  max-width: min(100%, 960px);
+}
+
+.gallery-lightbox img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .lightbox-close,

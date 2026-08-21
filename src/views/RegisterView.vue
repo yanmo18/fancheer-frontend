@@ -58,7 +58,12 @@ async function submit() {
     router.push('/login')
   } catch (e) {
     error.value = e instanceof Error ? e.message : '注册失败'
-    await loadCaptcha()
+    captchaText.value = ''
+    try {
+      await loadCaptcha()
+    } catch {
+      error.value = `${error.value}（验证码刷新失败，请稍后重试）`
+    }
   } finally {
     loading.value = false
   }

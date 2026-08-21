@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import * as awardApi from '@/api/admin/award'
 import type { AdminAwardItem } from '@/api/admin/award'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import AppModal from '@/components/AppModal.vue'
 import { formatDate, toDateInputValue } from '@/utils/datetime'
 
 const list = ref<AdminAwardItem[]>([])
@@ -185,9 +186,9 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
 
-    <div v-if="showForm" class="modal-mask" @click.self="closeForm">
+    <AppModal :open="showForm" title-id="award-admin-modal-title" @close="closeForm">
       <form class="card modal" @submit.prevent="submit">
-        <h2>{{ editingId ? '编辑荣誉' : '新增荣誉' }}</h2>
+        <h2 id="award-admin-modal-title">{{ editingId ? '编辑荣誉' : '新增荣誉' }}</h2>
         <label>
           奖项名称 *
           <input v-model="form.title" maxlength="100" required />
@@ -210,7 +211,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">保存</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

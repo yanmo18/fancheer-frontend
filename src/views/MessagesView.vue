@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import * as messagesApi from '@/api/messages'
 import { useAuthStore } from '@/stores/auth'
-import { useFocusTrap } from '@/composables/useFocusTrap'
+import AppModal from '@/components/AppModal.vue'
 import type { MessageItem, PrivateReplyItem, PublicReplyItem, SentPrivateMessageItem } from '@/types/api'
 import { formatDateTime } from '@/utils/datetime'
 
@@ -29,10 +29,6 @@ const canUsePrivateTab = computed(() => auth.role === 'fan')
 
 const reportTarget = ref<MessageItem | null>(null)
 const reportReason = ref('')
-const reportModalRef = ref<HTMLElement | null>(null)
-const reportModalOpen = computed(() => !!reportTarget.value)
-
-useFocusTrap(reportModalRef, reportModalOpen)
 
 const hasMorePublicReplies = ref(false)
 const loadingMoreReplies = ref(false)
@@ -449,7 +445,7 @@ onMounted(load)
       </div>
     </form>
 
-    <div v-if="reportTarget" ref="reportModalRef" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="report-modal-title" @click.self="closeReport" @keydown.escape="closeReport">
+    <AppModal v-if="reportTarget" :open="true" title-id="report-modal-title" @close="closeReport">
       <form class="auth-card modal-card" @submit.prevent="submitReport">
         <h2 id="report-modal-title" class="modal-title">举报留言</h2>
         <p class="muted chat-quote">{{ reportTarget.content }}</p>
@@ -462,7 +458,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary">提交举报</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

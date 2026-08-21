@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import * as sensitiveWordApi from '@/api/admin/sensitiveWord'
 import type { AdminSensitiveWordItem } from '@/api/admin/sensitiveWord'
+import AppModal from '@/components/AppModal.vue'
 import { formatDateTime } from '@/utils/datetime'
 
 const list = ref<AdminSensitiveWordItem[]>([])
@@ -137,9 +138,9 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
 
-    <div v-if="showForm" class="modal-mask" @click.self="closeForm">
+    <AppModal :open="showForm" title-id="sensitive-word-modal-title" @close="closeForm">
       <form class="card modal" @submit.prevent="submit">
-        <h2>新增敏感词</h2>
+        <h2 id="sensitive-word-modal-title">新增敏感词</h2>
         <label>
           敏感词 *
           <input v-model="newWord" maxlength="50" placeholder="输入要拦截的词" required />
@@ -150,7 +151,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">添加</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

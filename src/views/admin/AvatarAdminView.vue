@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import * as avatarApi from '@/api/admin/avatar'
 import type { AdminAvatarItem } from '@/api/admin/avatar'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import AppModal from '@/components/AppModal.vue'
 import { formatDateTime } from '@/utils/datetime'
 
 const list = ref<AdminAvatarItem[]>([])
@@ -140,9 +141,9 @@ onMounted(load)
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
 
-    <div v-if="showForm" class="modal-mask" @click.self="closeForm">
+    <AppModal :open="showForm" title-id="avatar-admin-modal-title" @close="closeForm">
       <form class="card modal" @submit.prevent="submit">
-        <h2>新增预设头像</h2>
+        <h2 id="avatar-admin-modal-title">新增预设头像</h2>
         <ImageUpload v-model="newUrl" category="avatars" label="头像图片" />
         <label>
           排序（越大越靠前）
@@ -153,7 +154,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">添加</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

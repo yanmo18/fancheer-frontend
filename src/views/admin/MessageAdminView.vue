@@ -6,6 +6,7 @@ import type { AdminMessageItem } from '@/api/admin/message'
 import type { AdminReportDetail, AdminReportItem } from '@/api/admin/report'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
+import AppModal from '@/components/AppModal.vue'
 
 const auth = useAuthStore()
 
@@ -419,11 +420,11 @@ onMounted(load)
       <span class="muted">{{ page }} / {{ totalPages }}</span>
       <button type="button" class="btn btn-ghost" :disabled="page >= totalPages" @click="nextPage">下一页</button>
     </div>
-    <div v-if="showReportDetail" class="modal-mask" @click.self="closeReportDetail">
+    <AppModal :open="showReportDetail" title-id="report-detail-modal-title" @close="closeReportDetail">
       <div class="card modal detail-modal">
         <header class="detail-head">
           <div>
-            <h2>举报详情</h2>
+            <h2 id="report-detail-modal-title">举报详情</h2>
             <p v-if="reportDetail" class="muted small">工单 #{{ reportDetail.id }}</p>
           </div>
           <button type="button" class="btn btn-ghost" @click="closeReportDetail">关闭</button>
@@ -479,11 +480,11 @@ onMounted(load)
           </div>
         </template>
       </div>
-    </div>
+    </AppModal>
 
-    <div v-if="showReplyForm && replyTarget" class="modal-mask" @click.self="closeReply">
+    <AppModal v-if="replyTarget" :open="showReplyForm" title-id="message-reply-modal-title" @close="closeReply">
       <form class="card modal" @submit.prevent="submitReply">
-        <h2>{{ mainTab === 'private' ? '私密回复' : '公开回复' }}</h2>
+        <h2 id="message-reply-modal-title">{{ mainTab === 'private' ? '私密回复' : '公开回复' }}</h2>
         <p class="muted quote">原留言：{{ replyTarget.content }}</p>
         <p class="muted small">发送者：{{ replyTarget.senderNickname }}</p>
         <label v-if="mainTab === 'private'" class="checkbox-row">
@@ -507,11 +508,11 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">发送回复</button>
         </div>
       </form>
-    </div>
+    </AppModal>
 
-    <div v-if="showResolveForm" class="modal-mask" @click.self="closeResolveForm">
+    <AppModal :open="showResolveForm" title-id="report-resolve-modal-title" @close="closeResolveForm">
       <form class="card modal" @submit.prevent="submitResolve">
-        <h2>办结举报工单</h2>
+        <h2 id="report-resolve-modal-title">办结举报工单</h2>
         <p class="muted">请填写处理结果，便于告知举报人处理情况。</p>
         <label>
           处理说明 *
@@ -528,7 +529,7 @@ onMounted(load)
           <button type="submit" class="btn btn-primary" :disabled="loading">确认办结</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

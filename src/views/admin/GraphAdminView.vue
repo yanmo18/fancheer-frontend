@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import * as graphApi from '@/api/admin/graph'
 import type { AdminGraphCharacter, AdminGraphRelation } from '@/api/admin/graph'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import AppModal from '@/components/AppModal.vue'
 
 const tab = ref<'characters' | 'relations'>('characters')
 
@@ -406,9 +407,9 @@ onMounted(loadCharacters)
       </div>
     </div>
 
-    <div v-if="showCharForm" class="modal-mask" @click.self="closeCharForm">
+    <AppModal :open="showCharForm" title-id="graph-char-modal-title" @close="closeCharForm">
       <form class="card modal" @submit.prevent="submitChar">
-        <h2>{{ editingCharId ? '编辑人物' : '新增人物' }}</h2>
+        <h2 id="graph-char-modal-title">{{ editingCharId ? '编辑人物' : '新增人物' }}</h2>
         <label>
           名称 *
           <input v-model="charForm.name" maxlength="50" required />
@@ -431,11 +432,11 @@ onMounted(loadCharacters)
           <button type="submit" class="btn btn-primary" :disabled="loading">保存</button>
         </div>
       </form>
-    </div>
+    </AppModal>
 
-    <div v-if="showRelForm" class="modal-mask" @click.self="closeRelForm">
+    <AppModal :open="showRelForm" title-id="graph-rel-modal-title" @close="closeRelForm">
       <form class="card modal" @submit.prevent="submitRel">
-        <h2>{{ editingRelId ? '编辑关系' : '新增关系' }}</h2>
+        <h2 id="graph-rel-modal-title">{{ editingRelId ? '编辑关系' : '新增关系' }}</h2>
         <label>
           起始人物 *
           <select v-model="relForm.fromCharacterId" required>
@@ -463,7 +464,7 @@ onMounted(loadCharacters)
           <button type="submit" class="btn btn-primary" :disabled="loading">保存</button>
         </div>
       </form>
-    </div>
+    </AppModal>
   </div>
 </template>
 

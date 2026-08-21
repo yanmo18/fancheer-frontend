@@ -104,7 +104,7 @@ const navAvatarUrl = () =>
     </div>
 
     <div class="nav-right" :class="{ open: menuOpen }">
-      <button type="button" class="theme-toggle" @click="toggleTheme">
+      <button type="button" class="theme-toggle" :aria-label="themeLabel" @click="toggleTheme">
         <span class="theme-toggle-icon">{{ themeIcon }}</span>
         <span>{{ themeLabel }}</span>
       </button>
