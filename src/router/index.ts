@@ -130,6 +130,9 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAdmin && !auth.isAdmin) {
+    if (auth.isLoggedIn) {
+      sessionStorage.setItem('access_denied_msg', '您没有权限访问管理后台')
+    }
     return { name: 'home' }
   }
 

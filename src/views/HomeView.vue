@@ -1,22 +1,24 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import MusicPlayer from '@/components/MusicPlayer.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
 import RevealBlock from '@/components/RevealBlock.vue'
 import ActivityListItem from '@/components/ActivityListItem.vue'
 import { useGalleryAutoScroll } from '@/composables/useGalleryAutoScroll'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import * as publicApi from '@/api/public'
 import { setPageMeta } from '@/utils/seo'
 import {
   withDemoActivities,
   withDemoAwards,
   withDemoBanners,
-  normalizeGalleryItems,
+  withDemoGallery,
   withDemoGraph,
   withDemoSongs,
   withDemoStreamer,
 } from '@/utils/demoContent'
+import { isDemoItemId } from '@/utils/demoFallback'
 import { getActivityStatus } from '@/utils/activity'
 import type {
   ActivityItem,
@@ -42,7 +44,8 @@ const galleryAnime = ref<GalleryItem[]>([])
 const galleryReal = ref<GalleryItem[]>([])
 const graphData = ref<GraphData | null>(null)
 const galleryTab = ref<'anime' | 'real'>('anime')
-const previewImage = ref<string | null>(null)
+const previewIndex = ref<number | null>(null)
+const lightboxRef = ref<HTMLElement | null>(null)
 const galleryScrollRef = ref<HTMLElement | null>(null)
 
 const HOME_ACTIVITY_PREVIEW = 4
@@ -53,7 +56,19 @@ const galleryList = computed(() =>
 
 const galleryItemCount = computed(() => galleryList.value.length)
 
-const galleryPreviewOpen = computed(() => !!previewImage.value)
+const previewImage = computed(() => {
+  if (previewIndex.value === null) return null
+  return galleryList.value[previewIndex.value]?.imageUrl ?? null
+})
+
+const previewTitle = computed(() => {
+  if (previewIndex.value === null) return '图片预览'
+  return galleryList.value[previewIndex.value]?.title || '图片预览'
+})
+
+const galleryPreviewOpen = computed(() => previewIndex.value !== null)
+
+useFocusTrap(lightboxRef, galleryPreviewOpen)
 
 const galleryAutoScroll = useGalleryAutoScroll(galleryScrollRef, {
   itemCount: galleryItemCount,
@@ -83,14 +98,33 @@ const identityTags = computed(() => {
   return Array.isArray(tags) ? tags : [tags]
 })
 
-function openPreview(url: string) {
+function openPreviewAt(index: number) {
   galleryAutoScroll.pauseFromUser()
-  previewImage.value = url
+  previewIndex.value = index
 }
 
 function closePreview() {
-  previewImage.value = null
+  previewIndex.value = null
 }
+
+function shiftPreview(delta: number) {
+  if (previewIndex.value === null || galleryList.value.length <= 1) return
+  const len = galleryList.value.length
+  previewIndex.value = (previewIndex.value + delta + len) % len
+}
+
+function onLightboxKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') closePreview()
+  else if (e.key === 'ArrowLeft') shiftPreview(-1)
+  else if (e.key === 'ArrowRight') shiftPreview(1)
+}
+
+watch(galleryPreviewOpen, (open) => {
+  if (open) document.addEventListener('keydown', onLightboxKeydown)
+  else document.removeEventListener('keydown', onLightboxKeydown)
+})
+
+onUnmounted(() => document.removeEventListener('keydown', onLightboxKeydown))
 
 function scrollGallery(dir: number) {
   galleryAutoScroll.pauseFromUser()
@@ -117,6 +151,7 @@ function formatAwardDate(iso?: string) {
 
 onMounted(async () => {
   const labels = ['博主资料', 'Banner', '荣誉', '音乐', '活动', '二次元图集', '真人图集', '关系图谱']
+  const fallbackOpts = { allowFallback: true } as const
   const results = await Promise.allSettled([
     publicApi.getStreamerInfo(),
     publicApi.getBanners(),
@@ -129,77 +164,110 @@ onMounted(async () => {
   ])
 
   const failed: string[] = []
+  const demoSections: string[] = []
+
+  function trackDemo(label: string, items: Array<{ id?: string }>) {
+    if (items.some((item) => isDemoItemId(item.id))) {
+      demoSections.push(label)
+    }
+  }
 
   if (results[0].status === 'fulfilled') {
-    streamer.value = withDemoStreamer(results[0].value)
-    if (results[0].value.name) {
+    const info = results[0].value
+    streamer.value = withDemoStreamer(info, fallbackOpts)
+    if (!info?.name && streamer.value) demoSections.push(labels[0])
+    if (info?.name) {
       setPageMeta({
-        title: results[0].value.name,
-        description: results[0].value.bio?.slice(0, 120) || undefined,
+        title: info.name,
+        description: info.bio?.slice(0, 120) || undefined,
         path: '/',
       })
     }
   } else {
-    streamer.value = withDemoStreamer(null)
+    streamer.value = withDemoStreamer(null, fallbackOpts)
+    if (streamer.value) demoSections.push(labels[0])
     failed.push(labels[0])
   }
 
   if (results[1].status === 'fulfilled') {
-    banners.value = withDemoBanners(results[1].value)
+    banners.value = withDemoBanners(results[1].value, fallbackOpts)
+    trackDemo(labels[1], banners.value)
   } else {
-    banners.value = withDemoBanners([])
+    banners.value = withDemoBanners([], fallbackOpts)
+    trackDemo(labels[1], banners.value)
     failed.push(labels[1])
   }
 
   if (results[2].status === 'fulfilled') {
-    awards.value = withDemoAwards(results[2].value)
+    awards.value = withDemoAwards(results[2].value, fallbackOpts)
+    trackDemo(labels[2], awards.value)
   } else {
-    awards.value = withDemoAwards([])
+    awards.value = withDemoAwards([], fallbackOpts)
+    trackDemo(labels[2], awards.value)
     failed.push(labels[2])
   }
 
   if (results[3].status === 'fulfilled') {
-    songs.value = withDemoSongs(results[3].value)
+    songs.value = withDemoSongs(results[3].value, fallbackOpts)
+    trackDemo(labels[3], songs.value)
   } else {
-    songs.value = withDemoSongs([])
+    songs.value = withDemoSongs([], fallbackOpts)
+    trackDemo(labels[3], songs.value)
     failed.push(labels[3])
   }
 
   if (results[4].status === 'fulfilled') {
-    activities.value = withDemoActivities(results[4].value)
+    activities.value = withDemoActivities(results[4].value, fallbackOpts)
+    trackDemo(labels[4], activities.value)
   } else {
-    activities.value = withDemoActivities([])
+    activities.value = withDemoActivities([], fallbackOpts)
+    trackDemo(labels[4], activities.value)
     failed.push(labels[4])
   }
 
   if (results[5].status === 'fulfilled') {
-    galleryAnime.value = normalizeGalleryItems(results[5].value)
+    galleryAnime.value = withDemoGallery(results[5].value, 'anime', fallbackOpts)
+    trackDemo(labels[5], galleryAnime.value)
   } else {
-    galleryAnime.value = []
+    galleryAnime.value = withDemoGallery([], 'anime', fallbackOpts)
+    trackDemo(labels[5], galleryAnime.value)
     failed.push(labels[5])
   }
 
   if (results[6].status === 'fulfilled') {
-    galleryReal.value = normalizeGalleryItems(results[6].value)
+    galleryReal.value = withDemoGallery(results[6].value, 'real', fallbackOpts)
+    trackDemo(labels[6], galleryReal.value)
   } else {
-    galleryReal.value = []
+    galleryReal.value = withDemoGallery([], 'real', fallbackOpts)
+    trackDemo(labels[6], galleryReal.value)
     failed.push(labels[6])
   }
 
   if (results[7].status === 'fulfilled') {
     const graph = results[7].value
-    graphData.value = withDemoGraph(graph.characters.length ? graph : null)
+    graphData.value = withDemoGraph(graph.characters.length ? graph : null, fallbackOpts)
+    if (graphData.value?.characters.some((c) => isDemoItemId(c.id))) {
+      demoSections.push(labels[7])
+    }
   } else {
-    graphData.value = withDemoGraph(null)
+    graphData.value = withDemoGraph(null, fallbackOpts)
+    if (graphData.value) demoSections.push(labels[7])
     failed.push(labels[7])
   }
 
   galleryTab.value = galleryAnime.value.length ? 'anime' : 'real'
 
+  const warningParts: string[] = []
+  if (failed.length) warningParts.push(`接口异常：${failed.join('、')}`)
+  const demoOnly = [...new Set(demoSections)]
+  if (demoOnly.length) warningParts.push(`演示兜底：${demoOnly.join('、')}`)
+
   if (failed.length === labels.length) {
-    error.value = '首页数据加载失败，请稍后刷新'
-  } else if (failed.length) {
-    loadWarning.value = `部分模块加载失败：${failed.join('、')}`
+    error.value = ''
+    loadWarning.value =
+      warningParts.join('；') + '。当前首页已尽量展示演示内容，请检查后端服务后刷新。'
+  } else if (warningParts.length) {
+    loadWarning.value = warningParts.join('；') + '。后台恢复后将自动显示真实数据。'
   }
 
   loading.value = false
@@ -301,19 +369,23 @@ onMounted(async () => {
             <div class="section-line" />
           </div>
         </div>
-        <div class="gallery-tabs">
+        <div class="gallery-tabs" role="tablist" aria-label="图集分类">
           <button
             type="button"
+            role="tab"
             class="gallery-tab"
             :class="{ active: galleryTab === 'anime' }"
+            :aria-selected="galleryTab === 'anime'"
             @click="galleryTab = 'anime'"
           >
             二次元
           </button>
           <button
             type="button"
+            role="tab"
             class="gallery-tab"
             :class="{ active: galleryTab === 'real' }"
+            :aria-selected="galleryTab === 'real'"
             @click="galleryTab = 'real'"
           >
             三次元
@@ -328,21 +400,26 @@ onMounted(async () => {
           @pointerdown="galleryAutoScroll.pauseFromUser()"
           @wheel="galleryAutoScroll.pauseFromUser()"
         >
-          <button type="button" class="gallery-arrow gallery-arrow-left" @click="scrollGallery(-1)">‹</button>
-          <div ref="galleryScrollRef" class="gallery-scroll gallery-scroll--auto">
+          <button type="button" class="gallery-arrow gallery-arrow-left" aria-label="向左滚动" @click="scrollGallery(-1)">‹</button>
+          <div ref="galleryScrollRef" class="gallery-scroll gallery-scroll--auto" role="list">
             <div
-              v-for="img in galleryList"
+              v-for="(img, index) in galleryList"
               :key="img.id"
               class="gallery-scroll-item"
-              @click="openPreview(img.imageUrl)"
+              role="listitem"
+              tabindex="0"
+              :aria-label="img.title ? `查看大图：${img.title}` : '查看大图'"
+              @click="openPreviewAt(index)"
+              @keydown.enter.prevent="openPreviewAt(index)"
+              @keydown.space.prevent="openPreviewAt(index)"
             >
-              <img :src="img.imageUrl" :alt="img.title || ''" />
+              <img :src="img.imageUrl" :alt="img.title || '图集图片'" />
               <div v-if="img.title" class="gallery-scroll-overlay">
                 <span class="gallery-scroll-text">{{ img.title }}</span>
               </div>
             </div>
           </div>
-          <button type="button" class="gallery-arrow gallery-arrow-right" @click="scrollGallery(1)">›</button>
+          <button type="button" class="gallery-arrow gallery-arrow-right" aria-label="向右滚动" @click="scrollGallery(1)">›</button>
         </div>
       </RevealBlock>
 
@@ -400,8 +477,36 @@ onMounted(async () => {
         <GraphViewer :data="graphData" />
       </RevealBlock>
 
-      <div v-if="previewImage" class="lightbox" @click="closePreview">
-        <img :src="previewImage" alt="" @click.stop />
+      <div
+        v-if="previewImage"
+        ref="lightboxRef"
+        class="lightbox"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="previewTitle"
+        tabindex="-1"
+        @click="closePreview"
+      >
+        <button type="button" class="lightbox-close" aria-label="关闭预览" @click.stop="closePreview">×</button>
+        <button
+          v-if="galleryList.length > 1"
+          type="button"
+          class="lightbox-nav lightbox-prev"
+          aria-label="上一张"
+          @click.stop="shiftPreview(-1)"
+        >
+          ‹
+        </button>
+        <img :src="previewImage" :alt="previewTitle" @click.stop />
+        <button
+          v-if="galleryList.length > 1"
+          type="button"
+          class="lightbox-nav lightbox-next"
+          aria-label="下一张"
+          @click.stop="shiftPreview(1)"
+        >
+          ›
+        </button>
       </div>
     </template>
   </div>
@@ -522,5 +627,48 @@ onMounted(async () => {
 .gallery-empty {
   text-align: center;
   padding: 1.5rem 0;
+}
+
+.gallery-scroll-item:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.lightbox-close,
+.lightbox-nav {
+  position: absolute;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  cursor: pointer;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  z-index: 1;
+}
+
+.lightbox-close {
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.lightbox-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.75rem;
+}
+
+.lightbox-prev {
+  left: 1rem;
+}
+
+.lightbox-next {
+  right: 1rem;
 }
 </style>

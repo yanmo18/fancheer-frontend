@@ -1,10 +1,22 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import AppHeader from '@/components/AppHeader.vue'
+
+const accessDenied = ref('')
+
+onMounted(() => {
+  const msg = sessionStorage.getItem('access_denied_msg')
+  if (msg) {
+    accessDenied.value = msg
+    sessionStorage.removeItem('access_denied_msg')
+  }
+})
 </script>
 
 <template>
   <div class="layout">
     <AppHeader />
+    <p v-if="accessDenied" class="access-denied">{{ accessDenied }}</p>
     <div class="main-content">
       <RouterView />
     </div>
@@ -26,6 +38,16 @@ import AppHeader from '@/components/AppHeader.vue'
 
 .main-content {
   flex: 1;
+}
+
+.access-denied {
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--accent-warm, #c45c26);
+  background: rgba(196, 92, 38, 0.08);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .site-footer {

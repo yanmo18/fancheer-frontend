@@ -24,7 +24,11 @@ async function loadCaptcha() {
 }
 
 onMounted(async () => {
-  await loadCaptcha()
+  try {
+    await loadCaptcha()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '验证码加载失败，请刷新页面'
+  }
   try {
     avatars.value = (await authApi.getRegisterAvatars()).map((item) => ({
       id: normalizeAvatarId(item.id),

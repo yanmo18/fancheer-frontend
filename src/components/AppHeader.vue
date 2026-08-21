@@ -64,6 +64,14 @@ const navAvatarUrl = () =>
         首页
       </RouterLink>
       <RouterLink
+        to="/activities"
+        class="nav-link"
+        :class="{ active: navActive('/activities') }"
+        @click="closeMenu"
+      >
+        活动日历
+      </RouterLink>
+      <RouterLink
         v-if="auth.isLoggedIn"
         to="/messages"
         class="nav-link"

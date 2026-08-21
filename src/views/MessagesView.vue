@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import * as messagesApi from '@/api/messages'
 import { useAuthStore } from '@/stores/auth'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import type { MessageItem, PrivateReplyItem, PublicReplyItem, SentPrivateMessageItem } from '@/types/api'
 import { formatDateTime } from '@/utils/datetime'
 
@@ -22,17 +23,36 @@ const error = ref('')
 const success = ref('')
 
 const PAGE_SIZE = 20
+const REPLY_PAGE_SIZE = 10
 
 const canUsePrivateTab = computed(() => auth.role === 'fan')
 
 const reportTarget = ref<MessageItem | null>(null)
 const reportReason = ref('')
+const reportModalRef = ref<HTMLElement | null>(null)
+const reportModalOpen = computed(() => !!reportTarget.value)
+
+useFocusTrap(reportModalRef, reportModalOpen)
+
+const hasMorePublicReplies = ref(false)
+const loadingMoreReplies = ref(false)
+const privateRepliesPage = ref(1)
+const sentPrivatePage = ref(1)
+const hasMorePrivateReplies = ref(false)
+const hasMoreSentPrivate = ref(false)
+const loadingMorePrivate = ref(false)
+const loadingMoreSent = ref(false)
 
 function isLiked(msg: MessageItem) {
   return msg.isLiked ?? msg.liked ?? false
 }
 
 function beforeCursor(items: MessageItem[]) {
+  const last = items[items.length - 1]
+  return last ? String(last.id) : undefined
+}
+
+function replyBeforeCursor(items: PublicReplyItem[]) {
   const last = items[items.length - 1]
   return last ? String(last.id) : undefined
 }
@@ -49,7 +69,8 @@ async function loadPublic(reset = true) {
     messages.value = msgList
     hasMoreMessages.value = msgList.length >= PAGE_SIZE
     if (reset) {
-      publicReplies.value = await messagesApi.getPublicReplies({ limit: 10 })
+      publicReplies.value = await messagesApi.getPublicReplies({ limit: REPLY_PAGE_SIZE })
+      hasMorePublicReplies.value = publicReplies.value.length >= REPLY_PAGE_SIZE
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
@@ -76,20 +97,80 @@ async function loadMoreMessages() {
   }
 }
 
-async function loadPrivate() {
-  loading.value = true
+async function loadMorePublicReplies() {
+  if (!hasMorePublicReplies.value || loadingMoreReplies.value || !publicReplies.value.length) return
+  loadingMoreReplies.value = true
+  error.value = ''
+  try {
+    const batch = await messagesApi.getPublicReplies({
+      before: replyBeforeCursor(publicReplies.value),
+      limit: REPLY_PAGE_SIZE,
+    })
+    publicReplies.value = [...publicReplies.value, ...batch]
+    hasMorePublicReplies.value = batch.length >= REPLY_PAGE_SIZE
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '加载更多回复失败'
+  } finally {
+    loadingMoreReplies.value = false
+  }
+}
+
+async function loadPrivate(reset = true) {
+  if (reset) {
+    loading.value = true
+    privateRepliesPage.value = 1
+    sentPrivatePage.value = 1
+  }
   error.value = ''
   try {
     const [replies, sent] = await Promise.all([
-      messagesApi.getPrivateReplies(),
-      messagesApi.getSentPrivateMessages(),
+      messagesApi.getPrivateReplies(privateRepliesPage.value, PAGE_SIZE),
+      messagesApi.getSentPrivateMessages(sentPrivatePage.value, PAGE_SIZE),
     ])
-    privateReplies.value = replies.list
-    sentPrivateMessages.value = sent.list
+    if (reset) {
+      privateReplies.value = replies.list
+      sentPrivateMessages.value = sent.list
+    }
+    hasMorePrivateReplies.value = privateRepliesPage.value < replies.pagination.totalPages
+    hasMoreSentPrivate.value = sentPrivatePage.value < sent.pagination.totalPages
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
-    loading.value = false
+    if (reset) loading.value = false
+  }
+}
+
+async function loadMorePrivateReplies() {
+  if (!hasMorePrivateReplies.value || loadingMorePrivate.value) return
+  loadingMorePrivate.value = true
+  error.value = ''
+  try {
+    privateRepliesPage.value += 1
+    const replies = await messagesApi.getPrivateReplies(privateRepliesPage.value, PAGE_SIZE)
+    privateReplies.value = [...privateReplies.value, ...replies.list]
+    hasMorePrivateReplies.value = privateRepliesPage.value < replies.pagination.totalPages
+  } catch (e) {
+    privateRepliesPage.value -= 1
+    error.value = e instanceof Error ? e.message : '加载更多回复失败'
+  } finally {
+    loadingMorePrivate.value = false
+  }
+}
+
+async function loadMoreSentPrivate() {
+  if (!hasMoreSentPrivate.value || loadingMoreSent.value) return
+  loadingMoreSent.value = true
+  error.value = ''
+  try {
+    sentPrivatePage.value += 1
+    const sent = await messagesApi.getSentPrivateMessages(sentPrivatePage.value, PAGE_SIZE)
+    sentPrivateMessages.value = [...sentPrivateMessages.value, ...sent.list]
+    hasMoreSentPrivate.value = sentPrivatePage.value < sent.pagination.totalPages
+  } catch (e) {
+    sentPrivatePage.value -= 1
+    error.value = e instanceof Error ? e.message : '加载更多私信失败'
+  } finally {
+    loadingMoreSent.value = false
   }
 }
 
@@ -111,18 +192,23 @@ async function refreshAfterSend() {
     if (tab.value === 'public') {
       const [msgList, replies] = await Promise.all([
         messagesApi.getPublicMessages({ limit: PAGE_SIZE }),
-        messagesApi.getPublicReplies({ limit: 10 }),
+        messagesApi.getPublicReplies({ limit: REPLY_PAGE_SIZE }),
       ])
       messages.value = msgList
       hasMoreMessages.value = msgList.length >= PAGE_SIZE
       publicReplies.value = replies
+      hasMorePublicReplies.value = replies.length >= REPLY_PAGE_SIZE
     } else {
+      privateRepliesPage.value = 1
+      sentPrivatePage.value = 1
       const [replies, sent] = await Promise.all([
-        messagesApi.getPrivateReplies(),
-        messagesApi.getSentPrivateMessages(),
+        messagesApi.getPrivateReplies(1, PAGE_SIZE),
+        messagesApi.getSentPrivateMessages(1, PAGE_SIZE),
       ])
       privateReplies.value = replies.list
       sentPrivateMessages.value = sent.list
+      hasMorePrivateReplies.value = replies.pagination.totalPages > 1
+      hasMoreSentPrivate.value = sent.pagination.totalPages > 1
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : '刷新失败'
@@ -265,6 +351,12 @@ onMounted(load)
           </div>
         </article>
 
+        <div v-if="publicReplies.length && hasMorePublicReplies" class="chat-load-more">
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="loadingMoreReplies" @click="loadMorePublicReplies">
+            {{ loadingMoreReplies ? '加载中...' : '加载更多博主回复' }}
+          </button>
+        </div>
+
         <article v-for="msg in messages" :key="msg.id" class="chat-bubble">
           <div class="chat-bubble-avatar">
             <img v-if="msg.senderAvatar" :src="msg.senderAvatar" alt="" class="bubble-avatar-img" />
@@ -325,6 +417,16 @@ onMounted(load)
         <p v-if="!sentPrivateMessages.length && !privateReplies.length" class="muted chat-empty">
           暂无私密留言记录
         </p>
+        <div v-if="hasMoreSentPrivate" class="chat-load-more">
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="loadingMoreSent" @click="loadMoreSentPrivate">
+            {{ loadingMoreSent ? '加载中...' : '加载更多已发送私信' }}
+          </button>
+        </div>
+        <div v-if="hasMorePrivateReplies" class="chat-load-more">
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="loadingMorePrivate" @click="loadMorePrivateReplies">
+            {{ loadingMorePrivate ? '加载中...' : '加载更多博主回复' }}
+          </button>
+        </div>
       </template>
     </div>
 
@@ -347,9 +449,9 @@ onMounted(load)
       </div>
     </form>
 
-    <div v-if="reportTarget" class="modal-mask" @click.self="closeReport">
+    <div v-if="reportTarget" ref="reportModalRef" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="report-modal-title" @click.self="closeReport" @keydown.escape="closeReport">
       <form class="auth-card modal-card" @submit.prevent="submitReport">
-        <h2 class="modal-title">举报留言</h2>
+        <h2 id="report-modal-title" class="modal-title">举报留言</h2>
         <p class="muted chat-quote">{{ reportTarget.content }}</p>
         <div class="auth-field">
           <label class="auth-label">举报原因 *</label>
