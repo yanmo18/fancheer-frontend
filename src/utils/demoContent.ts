@@ -1,13 +1,10 @@
 import {
-  DEMO_ANIME_PICTURES,
   DEMO_ACTIVITY_COVERS,
   DEMO_AWARD_IMAGES,
   DEMO_BANNER_IMAGES,
   DEMO_GRAPH_AVATARS,
-  DEMO_REAL_ITEMS,
   DEMO_SONG_COVERS,
   DEMO_STREAMER_AVATAR,
-  demoPicture,
 } from '@/constants/demoAssets'
 import { MAX_HOME_BANNERS } from '@/constants/banner'
 import type {
@@ -78,32 +75,9 @@ export function withDemoActivities(activities: ActivityItem[]) {
   )
 }
 
-export function withDemoGallery(items: GalleryItem[], category: 'anime' | 'real') {
-  const pool: GalleryItem[] =
-    category === 'anime'
-      ? DEMO_ANIME_PICTURES.map((n) => ({
-          id: `demo-anime-${n}`,
-          category,
-          imageUrl: demoPicture(n),
-          title: `形象 ${String(n).padStart(2, '0')}`,
-        }))
-      : DEMO_REAL_ITEMS.map((item, index) => ({
-          id: `demo-real-${index + 1}`,
-          category,
-          imageUrl: item.url,
-          title: item.title,
-        }))
-
-  // 库里无数据时，使用演示池兜底，避免首页空白
-  if (!items.length) return pool
-
-  // 库里有数据时，只替换空 URL 项，不再强行补齐到 demo 池数量
-  // 这样前端展示数量与数据库实际数量保持一致
-  return items.map((item, index) =>
-    isMissingMediaUrl(item.imageUrl)
-      ? { ...item, imageUrl: pickByIndex(pool.map((p) => p.imageUrl), index) }
-      : item,
-  )
+/** 图集严格对齐 API/数据库：不注入演示池，仅过滤无 URL 的脏数据 */
+export function normalizeGalleryItems(items: GalleryItem[]): GalleryItem[] {
+  return items.filter((item) => !isMissingMediaUrl(item.imageUrl))
 }
 
 export function withDemoGraph(graph: GraphData | null): GraphData | null {

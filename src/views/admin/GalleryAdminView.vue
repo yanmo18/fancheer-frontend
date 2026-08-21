@@ -12,6 +12,9 @@ const categoryLabels: Record<GalleryCategory, string> = {
 const list = ref<AdminGalleryItem[]>([])
 const page = ref(1)
 const totalPages = ref(1)
+const totalCount = ref(0)
+const animeCount = ref(0)
+const realCount = ref(0)
 const loading = ref(false)
 const error = ref('')
 const message = ref('')
@@ -40,6 +43,9 @@ async function load() {
     const data = await galleryApi.getAdminGallery(page.value)
     list.value = data.list
     totalPages.value = data.pagination.totalPages
+    totalCount.value = data.pagination.total
+    animeCount.value = data.stats.anime
+    realCount.value = data.stats.real
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
@@ -134,7 +140,9 @@ onMounted(load)
     <header class="page-header">
       <div>
         <h1>图集管理</h1>
-        <p class="muted">管理首页展示的图集内容</p>
+        <p class="muted">
+          共 {{ totalCount }} 张（二次元 {{ animeCount }} · 真人 {{ realCount }}），与首页展示数量一致
+        </p>
       </div>
       <button type="button" class="btn btn-primary" @click="openCreate">新增图片</button>
     </header>

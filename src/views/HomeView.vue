@@ -12,7 +12,7 @@ import {
   withDemoActivities,
   withDemoAwards,
   withDemoBanners,
-  withDemoGallery,
+  normalizeGalleryItems,
   withDemoGraph,
   withDemoSongs,
   withDemoStreamer,
@@ -173,16 +173,16 @@ onMounted(async () => {
   }
 
   if (results[5].status === 'fulfilled') {
-    galleryAnime.value = withDemoGallery(results[5].value, 'anime')
+    galleryAnime.value = normalizeGalleryItems(results[5].value)
   } else {
-    galleryAnime.value = withDemoGallery([], 'anime')
+    galleryAnime.value = []
     failed.push(labels[5])
   }
 
   if (results[6].status === 'fulfilled') {
-    galleryReal.value = withDemoGallery(results[6].value, 'real')
+    galleryReal.value = normalizeGalleryItems(results[6].value)
   } else {
-    galleryReal.value = withDemoGallery([], 'real')
+    galleryReal.value = []
     failed.push(labels[6])
   }
 
@@ -319,8 +319,9 @@ onMounted(async () => {
             三次元
           </button>
         </div>
+        <p v-if="!galleryList.length" class="muted gallery-empty">暂无{{ galleryTab === 'anime' ? '二次元' : '三次元' }}图集</p>
         <div
-          v-if="galleryList.length"
+          v-else
           class="gallery-scroll-wrapper"
           @mouseenter="galleryAutoScroll.onHoverEnter()"
           @mouseleave="galleryAutoScroll.onHoverLeave()"
@@ -343,7 +344,6 @@ onMounted(async () => {
           </div>
           <button type="button" class="gallery-arrow gallery-arrow-right" @click="scrollGallery(1)">›</button>
         </div>
-        <p v-else class="state">该分类暂无图片</p>
       </RevealBlock>
 
       <RevealBlock v-if="activities.length" variant="events" tag="section" class="section section-activities">
@@ -517,5 +517,10 @@ onMounted(async () => {
   font-size: 0.6875rem;
   color: var(--text-muted);
   letter-spacing: 0.04em;
+}
+
+.gallery-empty {
+  text-align: center;
+  padding: 1.5rem 0;
 }
 </style>

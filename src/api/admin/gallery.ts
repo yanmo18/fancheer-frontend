@@ -1,5 +1,4 @@
 import { request } from '../http'
-import type { Paginated } from './banner'
 
 export type GalleryCategory = 'anime' | 'real'
 
@@ -19,8 +18,22 @@ export interface GalleryPayload {
   sortOrder?: number
 }
 
+export interface AdminGalleryResult {
+  list: AdminGalleryItem[]
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
+  stats: {
+    anime: number
+    real: number
+  }
+}
+
 export const getAdminGallery = (page = 1, pageSize = 20) =>
-  request<Paginated<AdminGalleryItem>>({
+  request<AdminGalleryResult>({
     url: '/api/admin/gallery',
     method: 'GET',
     params: { page, pageSize },
