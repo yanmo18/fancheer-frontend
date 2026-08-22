@@ -9,6 +9,7 @@ import ActivityListItem from '@/components/ActivityListItem.vue'
 import * as publicApi from '@/api/public'
 
 import { withDemoActivities } from '@/utils/demoContent'
+import { isDemoItemId } from '@/utils/demoFallback'
 
 import { getActivityStatus } from '@/utils/activity'
 
@@ -17,9 +18,8 @@ import type { ActivityItem } from '@/types/api'
 
 
 const loading = ref(true)
-
 const error = ref('')
-
+const loadWarning = ref('')
 const activities = ref<ActivityItem[]>([])
 
 
@@ -85,23 +85,25 @@ const groupedActivities = computed(() => {
 
 
 onMounted(async () => {
-
+  const fallbackOpts = { allowFallback: true } as const
   try {
-
     const list = await publicApi.getActivities()
-
-    activities.value = withDemoActivities(list)
-
+    activities.value = withDemoActivities(list, fallbackOpts)
+    if (!list.length && activities.value.length) {
+      loadWarning.value = '当前展示演示活动，后台恢复后将显示真实数据'
+    } else if (activities.value.some((item) => isDemoItemId(item.id))) {
+      loadWarning.value = '部分活动为演示数据'
+    }
   } catch (e) {
-
-    error.value = e instanceof Error ? e.message : '加载失败'
-
+    activities.value = withDemoActivities([], fallbackOpts)
+    if (activities.value.length) {
+      loadWarning.value = '活动接口暂不可用，当前展示演示数据'
+    } else {
+      error.value = e instanceof Error ? e.message : '加载失败'
+    }
   } finally {
-
     loading.value = false
-
   }
-
 })
 
 </script>
@@ -117,6 +119,8 @@ onMounted(async () => {
       <RouterLink to="/" class="back-link">← 返回首页</RouterLink>
 
 
+
+      <p v-if="loadWarning" class="load-warning">{{ loadWarning }}</p>
 
       <div class="hero-head">
 
@@ -500,6 +504,15 @@ onMounted(async () => {
 
   color: var(--danger);
 
+}
+
+.load-warning {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(196, 163, 90, 0.12);
+  color: var(--accent-warm, #c4a35a);
+  font-size: 0.9rem;
 }
 
 

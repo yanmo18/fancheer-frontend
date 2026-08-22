@@ -19,10 +19,8 @@ app.use(router)
 onSessionExpired(() => {
   const auth = useAuthStore()
   auth.clearSession()
-  const { name, meta, fullPath } = router.currentRoute.value
+  const { meta, fullPath } = router.currentRoute.value
   if (meta.requiresAuth || meta.requiresAdmin) {
-    void router.push({ name: 'login', query: { redirect: fullPath } })
-  } else if (name !== 'login' && name !== 'register') {
     void router.push({ name: 'login', query: { redirect: fullPath } })
   }
 })

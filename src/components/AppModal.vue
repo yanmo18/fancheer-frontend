@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const props = withDefaults(
@@ -17,6 +17,29 @@ const rootRef = ref<HTMLElement | null>(null)
 const trapActive = computed(() => props.open)
 
 useFocusTrap(rootRef, trapActive)
+
+function onEscape(e: KeyboardEvent) {
+  if (e.key === 'Escape') emit('close')
+}
+
+watch(
+  () => props.open,
+  (open) => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+      document.addEventListener('keydown', onEscape)
+    } else {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', onEscape)
+    }
+  },
+  { flush: 'post' },
+)
+
+onUnmounted(() => {
+  document.body.style.overflow = ''
+  document.removeEventListener('keydown', onEscape)
+})
 </script>
 
 <template>
@@ -28,8 +51,8 @@ useFocusTrap(rootRef, trapActive)
     role="dialog"
     aria-modal="true"
     :aria-labelledby="titleId"
+    tabindex="-1"
     @click.self="emit('close')"
-    @keydown.escape="emit('close')"
   >
     <slot />
   </div>

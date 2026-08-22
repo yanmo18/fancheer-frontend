@@ -15,8 +15,18 @@ const hasStarted = ref(false)
 
 const currentSong = computed(() => props.songs[currentIndex.value] ?? null)
 const labelName = computed(() => props.streamerName || 'Fancheer')
+const playError = ref('')
 
 async function startPlayback(index: number) {
+  const song = props.songs[index]
+  if (!song?.audioUrl?.trim()) {
+    playError.value = '演示曲目暂无音频，后台恢复数据后可播放'
+    hasStarted.value = false
+    isPlaying.value = false
+    currentIndex.value = index
+    return
+  }
+  playError.value = ''
   currentIndex.value = index
   hasStarted.value = true
   await nextTick()
@@ -25,6 +35,7 @@ async function startPlayback(index: number) {
     isPlaying.value = true
   } catch {
     isPlaying.value = false
+    playError.value = '无法播放音频，请稍后重试'
   }
 }
 
@@ -131,7 +142,8 @@ onBeforeUnmount(() => {
       <div class="vinyl-song-artist">
         {{ currentSong ? (currentSong.artist || labelName) : '点击左侧方块或唱片播放' }}
       </div>
-      <p class="vinyl-hint muted">{{ vinylActive ? '点击唱片暂停' : hasStarted ? '点击唱片继续播放' : '点击唱片开始播放' }}</p>
+      <p v-if="playError" class="vinyl-error">{{ playError }}</p>
+      <p class="vinyl-hint muted">{{ vinylActive ? '点击唱片暂停' : hasStarted ? '点击唱片继续播放' : '点击左侧方块或唱片播放' }}</p>
     </div>
   </div>
 </template>
@@ -168,5 +180,12 @@ onBeforeUnmount(() => {
   margin: 0.5rem 0 0;
   font-size: 11px;
   letter-spacing: 0.04em;
+}
+
+.vinyl-error {
+  margin: 0.35rem 0 0;
+  font-size: 12px;
+  color: var(--accent-warm, #c4a35a);
+  text-align: center;
 }
 </style>

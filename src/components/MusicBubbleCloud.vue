@@ -203,6 +203,13 @@ function onPointerUp() {
   window.removeEventListener('pointerup', onPointerUp)
 }
 
+function onBubbleKeydown(event: KeyboardEvent, node: BubbleNode) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    emit('select', node.index)
+  }
+}
+
 onMounted(async () => {
   await nextTick()
   buildSimulation()
@@ -253,6 +260,7 @@ onBeforeUnmount(() => {
       :style="bubbleStyle(node)"
       :title="node.title"
       @pointerdown="onPointerDown($event, node)"
+      @keydown="onBubbleKeydown($event, node)"
     >
       <div class="music-bubble-cover" :style="coverStyle(node)">
         <img

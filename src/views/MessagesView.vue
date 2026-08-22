@@ -322,7 +322,7 @@ onMounted(load)
     <p v-if="error" class="error chat-flash">{{ error }}</p>
     <p v-if="loading" class="muted chat-flash">加载中...</p>
 
-    <div v-else class="chat-messages-area">
+    <div class="chat-messages-area">
       <template v-if="tab === 'public'">
         <article v-for="reply in publicReplies" :key="reply.id" class="chat-bubble">
           <div class="chat-bubble-avatar">

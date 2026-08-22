@@ -32,6 +32,7 @@ function stopTimer() {
 function startTimer() {
   stopTimer()
   if (!hasMultiple.value || paused.value) return
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   timer = setInterval(next, props.interval ?? 5000)
 }
 
