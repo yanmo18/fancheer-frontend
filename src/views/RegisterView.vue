@@ -3,8 +3,12 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import * as authApi from '@/api/auth'
 import { isSameAvatarId, normalizeAvatarId } from '@/utils/avatar'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
+import PasswordInput from '@/components/PasswordInput.vue'
+import { useCooldown } from '@/composables/useCooldown'
 
 const router = useRouter()
+const cooldown = useCooldown()
 
 const username = ref('')
 const password = ref('')
@@ -18,9 +22,23 @@ const loading = ref(false)
 const error = ref('')
 
 async function loadCaptcha() {
-  const data = await authApi.getCaptcha()
-  captchaId.value = data.captchaId
-  captchaSvg.value = data.svg
+  try {
+    const data = await authApi.getCaptcha()
+    captchaId.value = data.captchaId
+    captchaSvg.value = data.svg
+  } catch (e) {
+    cooldown.startFromError(e, 10_000)
+    throw e
+  }
+}
+
+async function refreshCaptcha() {
+  error.value = ''
+  try {
+    await loadCaptcha()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '验证码加载失败'
+  }
 }
 
 onMounted(async () => {
@@ -41,6 +59,7 @@ onMounted(async () => {
 
 async function submit() {
   error.value = ''
+  if (cooldown.left > 0) return
   if (!agreement.value) {
     error.value = '请勾选用户协议'
     return
@@ -55,14 +74,17 @@ async function submit() {
       agreement: true,
       avatarId: selectedAvatarId.value || undefined,
     })
-    router.push('/login')
+    router.push({ path: '/login', query: { registered: '1' } })
   } catch (e) {
     error.value = e instanceof Error ? e.message : '注册失败'
+    const limited = cooldown.startFromError(e, 60_000)
     captchaText.value = ''
-    try {
-      await loadCaptcha()
-    } catch {
-      error.value = `${error.value}（验证码刷新失败，请稍后重试）`
+    if (!limited) {
+      try {
+        await loadCaptcha()
+      } catch {
+        error.value = `${error.value}（验证码刷新失败，请稍后重试）`
+      }
     }
   } finally {
     loading.value = false
@@ -80,12 +102,22 @@ async function submit() {
 
       <div class="auth-field">
         <label class="auth-label">用户名</label>
-        <input v-model="username" class="auth-input" required />
+        <input
+          v-model="username"
+          class="auth-input"
+          required
+          autocomplete="username"
+          maxlength="50"
+        />
       </div>
-      <div class="auth-field">
-        <label class="auth-label">密码</label>
-        <input v-model="password" class="auth-input" type="password" required />
-      </div>
+      <PasswordInput
+        v-model="password"
+        label="密码"
+        autocomplete="new-password"
+        required
+        :maxlength="20"
+        placeholder="6-20 个字符"
+      />
 
       <div v-if="avatars.length" class="auth-field">
         <label class="auth-label">选择头像（可选）</label>
@@ -98,7 +130,7 @@ async function submit() {
             :class="{ selected: isSameAvatarId(selectedAvatarId, item.id) }"
             @click="selectedAvatarId = isSameAvatarId(selectedAvatarId, item.id) ? '' : item.id"
           >
-            <img :src="item.url" alt="" />
+            <img :src="resolveMediaUrl(item.url)" alt="" />
           </button>
         </div>
       </div>
@@ -107,7 +139,15 @@ async function submit() {
         <label class="auth-label">验证码</label>
         <div class="auth-captcha-row">
           <input v-model="captchaText" class="auth-input" required />
-          <div class="auth-captcha-box" v-html="captchaSvg" title="点击刷新" @click="loadCaptcha" />
+          <button
+            type="button"
+            class="auth-captcha-box"
+            title="点击刷新验证码"
+            aria-label="刷新验证码"
+            :disabled="cooldown.left > 0"
+            @click="refreshCaptcha"
+            v-html="captchaSvg"
+          />
         </div>
       </div>
 
@@ -120,8 +160,8 @@ async function submit() {
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" class="auth-submit" :disabled="loading">
-        {{ loading ? '提交中...' : '注册' }}
+      <button type="submit" class="auth-submit" :disabled="loading || cooldown.left > 0">
+        {{ loading ? '提交中...' : cooldown.left > 0 ? `请 ${cooldown.left} 秒后再试` : '注册' }}
       </button>
       <p class="auth-footer">
         已有账号？
@@ -158,5 +198,11 @@ async function submit() {
   border-radius: 50%;
   object-fit: cover;
   display: block;
+}
+
+.auth-captcha-box {
+  margin: 0;
+  padding: 0;
+  font: inherit;
 }
 </style>

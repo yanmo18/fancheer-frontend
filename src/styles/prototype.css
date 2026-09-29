@@ -817,30 +817,37 @@ input, textarea, select { font-family: inherit; outline: none; }
 .gallery-scroll-item:hover .gallery-scroll-overlay { opacity: 1; }
 .gallery-scroll-text { font-size: 13px; color: white; font-weight: 500; }
 
-/* Gallery navigation arrows */
+/* Gallery navigation arrows — inset so overflow:hidden / overflow-x:hidden cannot clip them */
 .gallery-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px; height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.35);
+  background: rgba(20, 16, 18, 0.72);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.7);
-  font-size: 18px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.3s ease;
-  z-index: 5;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  z-index: 8;
+  pointer-events: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
 }
 .gallery-arrow:hover {
-  background: rgba(0,0,0,0.55);
+  background: rgba(20, 16, 18, 0.9);
   color: white;
   border-color: var(--gold);
   box-shadow: 0 0 15px var(--gold-glow);
 }
-.gallery-arrow-left { left: -20px; }
-.gallery-arrow-right { right: -20px; }
+.gallery-arrow-left { left: 12px; }
+.gallery-arrow-right { right: 12px; }
 
 /* ============================================================
    ACTIVITIES — FADE EFFECT
@@ -1111,6 +1118,11 @@ input, textarea, select { font-family: inherit; outline: none; }
   transition: border-color 0.3s ease;
   width: 200px;
 }
+.user-card-third .user-text-input {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
 .user-text-input:focus { border-color: var(--accent-primary); }
 .user-btn {
   padding: 7px 18px; border-radius: 8px;
@@ -1298,8 +1310,13 @@ input, textarea, select { font-family: inherit; outline: none; }
   .vinyl-label-text { font-size: 9px; top: 16px; }
   .user-layout { flex-direction: column; }
   .user-card-full, .user-card-wide, .user-card-third { flex: 1 1 100%; min-width: auto; }
-  .gallery-arrow-left { left: -10px; }
-  .gallery-arrow-right { right: -10px; }
+  .gallery-arrow {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  .gallery-arrow-left { left: 8px; }
+  .gallery-arrow-right { right: 8px; }
 }
 
 /* ============================================================

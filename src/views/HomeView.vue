@@ -19,6 +19,7 @@ import {
   withDemoStreamer,
 } from '@/utils/demoContent'
 import { isDemoItemId } from '@/utils/demoFallback'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 import { getActivityStatus } from '@/utils/activity'
 import type {
   ActivityItem,
@@ -146,7 +147,12 @@ function formatAwardDate(iso?: string) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-onMounted(async () => {
+async function loadHome() {
+  loading.value = true
+  error.value = ''
+  loadWarning.value = ''
+  galleryAutoScroll.stop()
+
   const labels = ['博主资料', 'Banner', '荣誉', '音乐', '活动', '二次元图集', '真人图集', '关系图谱']
   const fallbackOpts = { allowFallback: true } as const
   const results = await Promise.allSettled([
@@ -270,16 +276,24 @@ onMounted(async () => {
   loading.value = false
   await nextTick()
   galleryAutoScroll.start()
-})
+}
+
+onMounted(loadHome)
 </script>
 
 <template>
   <div class="home-page">
     <p v-if="loading" class="state">加载中...</p>
-    <p v-else-if="error" class="state error">{{ error }}</p>
+    <p v-else-if="error" class="state error">
+      {{ error }}
+      <button type="button" class="retry-btn" @click="loadHome">重试</button>
+    </p>
 
     <template v-else>
-      <p v-if="loadWarning" class="state muted">{{ loadWarning }}</p>
+      <div v-if="loadWarning" class="state muted load-warning">
+        <p>{{ loadWarning }}</p>
+        <button type="button" class="retry-btn" @click="loadHome">重新加载</button>
+      </div>
       <RevealBlock v-if="banners.length" variant="banner">
         <BannerCarousel :banners="banners" />
       </RevealBlock>
@@ -297,7 +311,7 @@ onMounted(async () => {
           <div class="profile-avatar-wrapper">
             <div class="profile-avatar">
               <div class="profile-avatar-inner">
-                <img v-if="streamer.avatarUrl" :src="streamer.avatarUrl" alt="" class="profile-avatar-img" />
+                <img v-if="streamer.avatarUrl" :src="resolveMediaUrl(streamer.avatarUrl)" alt="" class="profile-avatar-img" />
                 <span v-else class="avatar-fallback">{{ streamer.name.slice(0, 1) }}</span>
               </div>
             </div>
@@ -397,7 +411,7 @@ onMounted(async () => {
           @pointerdown="galleryAutoScroll.pauseFromUser()"
           @wheel="galleryAutoScroll.pauseFromUser()"
         >
-          <button type="button" class="gallery-arrow gallery-arrow-left" aria-label="向左滚动" @click="scrollGallery(-1)">‹</button>
+          <button type="button" class="gallery-arrow gallery-arrow-left" aria-label="向左滚动" @click.stop="scrollGallery(-1)">‹</button>
           <div ref="galleryScrollRef" class="gallery-scroll gallery-scroll--auto" role="list">
             <div
               v-for="(img, index) in galleryList"
@@ -410,13 +424,13 @@ onMounted(async () => {
               @keydown.enter.prevent="openPreviewAt(index)"
               @keydown.space.prevent="openPreviewAt(index)"
             >
-              <img :src="img.imageUrl" :alt="img.title || '图集图片'" />
+              <img :src="resolveMediaUrl(img.imageUrl)" :alt="img.title || '图集图片'" />
               <div v-if="img.title" class="gallery-scroll-overlay">
                 <span class="gallery-scroll-text">{{ img.title }}</span>
               </div>
             </div>
           </div>
-          <button type="button" class="gallery-arrow gallery-arrow-right" aria-label="向右滚动" @click="scrollGallery(1)">›</button>
+          <button type="button" class="gallery-arrow gallery-arrow-right" aria-label="向右滚动" @click.stop="scrollGallery(1)">›</button>
         </div>
       </RevealBlock>
 
@@ -471,7 +485,12 @@ onMounted(async () => {
             <div class="section-line" />
           </div>
         </div>
-        <GraphViewer :data="graphData" />
+        <Suspense>
+          <GraphViewer :data="graphData" />
+          <template #fallback>
+            <p class="muted">图谱加载中...</p>
+          </template>
+        </Suspense>
       </RevealBlock>
 
       <AppModal
@@ -492,7 +511,7 @@ onMounted(async () => {
           >
             ‹
           </button>
-          <img v-if="previewImage" :src="previewImage" :alt="previewTitle" @click.stop />
+          <img v-if="previewImage" :src="resolveMediaUrl(previewImage)" :alt="previewTitle" @click.stop />
           <button
             v-if="galleryList.length > 1"
             type="button"
@@ -517,6 +536,31 @@ onMounted(async () => {
   padding: 6rem 1.5rem 2rem;
   text-align: center;
   color: var(--text-muted);
+}
+
+.load-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.load-warning p {
+  margin: 0;
+}
+
+.retry-btn {
+  border: 1px solid var(--border-subtle, #d8cfc4);
+  background: transparent;
+  color: var(--accent-primary, #8b3352);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  background: rgba(139, 51, 82, 0.08);
 }
 
 .profile-avatar-img {
@@ -659,13 +703,14 @@ onMounted(async () => {
 .lightbox-nav {
   position: absolute;
   border: none;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.62);
   color: #fff;
   cursor: pointer;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  z-index: 1;
+  z-index: 3;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .lightbox-close {
@@ -675,6 +720,7 @@ onMounted(async () => {
   height: 2.5rem;
   font-size: 1.5rem;
   line-height: 1;
+  z-index: 4;
 }
 
 .lightbox-nav {

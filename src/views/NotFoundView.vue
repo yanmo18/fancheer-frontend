@@ -5,7 +5,7 @@
     <p class="muted">链接可能已失效，或地址输入有误。</p>
     <div class="actions">
       <RouterLink to="/" class="btn btn-primary">返回首页</RouterLink>
-      <RouterLink to="/messages" class="btn btn-ghost">去聊天室</RouterLink>
+      <RouterLink to="/activities" class="btn btn-ghost">看活动日历</RouterLink>
     </div>
   </div>
 </template>

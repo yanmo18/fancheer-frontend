@@ -3,8 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import * as messagesApi from '@/api/messages'
 import { useAuthStore } from '@/stores/auth'
 import AppModal from '@/components/AppModal.vue'
+import { usePagePoll } from '@/composables/usePagePoll'
+import { isRateLimitMessage, useCooldown } from '@/composables/useCooldown'
 import type { MessageItem, PrivateReplyItem, PublicReplyItem, SentPrivateMessageItem } from '@/types/api'
 import { formatDateTime } from '@/utils/datetime'
+import { mergeByIdNewestFirst } from '@/utils/listMerge'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 type Tab = 'public' | 'private'
 
@@ -19,11 +23,15 @@ const loading = ref(true)
 const loadingMore = ref(false)
 const hasMoreMessages = ref(false)
 const sending = ref(false)
+const cooldown = useCooldown()
 const error = ref('')
 const success = ref('')
 
 const PAGE_SIZE = 20
 const REPLY_PAGE_SIZE = 10
+const POLL_MS = 3000
+const SEND_COOLDOWN_MS = 20_000
+const inflightLikeIds = new Set<string>()
 
 const canUsePrivateTab = computed(() => auth.role === 'fan')
 
@@ -211,8 +219,41 @@ async function refreshAfterSend() {
   }
 }
 
+async function silentRefresh() {
+  if (
+    loading.value ||
+    loadingMore.value ||
+    loadingMoreReplies.value ||
+    loadingMorePrivate.value ||
+    loadingMoreSent.value ||
+    sending.value
+  ) {
+    return
+  }
+
+  try {
+    if (tab.value === 'public') {
+      const [msgList, replies] = await Promise.all([
+        messagesApi.getPublicMessages({ limit: PAGE_SIZE }),
+        messagesApi.getPublicReplies({ limit: REPLY_PAGE_SIZE }),
+      ])
+      messages.value = mergeByIdNewestFirst(messages.value, msgList, (id) => inflightLikeIds.has(id))
+      publicReplies.value = mergeByIdNewestFirst(publicReplies.value, replies)
+    } else {
+      const [replies, sent] = await Promise.all([
+        messagesApi.getPrivateReplies(1, PAGE_SIZE),
+        messagesApi.getSentPrivateMessages(1, PAGE_SIZE),
+      ])
+      privateReplies.value = mergeByIdNewestFirst(privateReplies.value, replies.list)
+      sentPrivateMessages.value = mergeByIdNewestFirst(sentPrivateMessages.value, sent.list)
+    }
+  } catch {
+    /* 轮询失败不打断当前页面 */
+  }
+}
+
 async function send() {
-  if (!content.value.trim()) return
+  if (!content.value.trim() || cooldown.left > 0) return
   sending.value = true
   error.value = ''
   success.value = ''
@@ -220,9 +261,12 @@ async function send() {
     await messagesApi.sendMessage(content.value.trim(), tab.value)
     content.value = ''
     success.value = tab.value === 'public' ? '留言已发布' : '私密留言已发送，博主回复后会显示在这里'
+    cooldown.start(SEND_COOLDOWN_MS)
     await refreshAfterSend()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '发送失败'
+    const message = e instanceof Error ? e.message : '发送失败'
+    error.value = message
+    if (isRateLimitMessage(message)) cooldown.start(SEND_COOLDOWN_MS)
   } finally {
     sending.value = false
   }
@@ -231,6 +275,7 @@ async function send() {
 async function toggleLike(msg: MessageItem) {
   const prevLiked = isLiked(msg)
   const prevCount = msg.likeCount
+  inflightLikeIds.add(String(msg.id))
 
   if (prevLiked) {
     msg.isLiked = false
@@ -253,6 +298,8 @@ async function toggleLike(msg: MessageItem) {
     msg.liked = prevLiked
     msg.likeCount = prevCount
     error.value = e instanceof Error ? e.message : '操作失败'
+  } finally {
+    inflightLikeIds.delete(String(msg.id))
   }
 }
 
@@ -294,13 +341,14 @@ watch(canUsePrivateTab, (allowed) => {
 })
 
 onMounted(load)
+usePagePoll(silentRefresh, POLL_MS)
 </script>
 
 <template>
   <div class="chat-page">
     <div class="chat-header">
       <div class="chat-header-title">聊天室</div>
-      <div class="chat-header-desc">公开消息全员可见 · 私密消息仅博主可见</div>
+      <div class="chat-header-desc">公开消息全员可见 · 私密消息仅博主可见 · 停留本页时约 3 秒刷新</div>
     </div>
 
     <div class="chat-mode-tabs">
@@ -326,7 +374,7 @@ onMounted(load)
       <template v-if="tab === 'public'">
         <article v-for="reply in publicReplies" :key="reply.id" class="chat-bubble">
           <div class="chat-bubble-avatar">
-            <img v-if="reply.streamerAvatar" :src="reply.streamerAvatar" alt="" class="bubble-avatar-img" />
+            <img v-if="reply.streamerAvatar" :src="resolveMediaUrl(reply.streamerAvatar)" alt="" class="bubble-avatar-img" />
             <span v-else>{{ authorInitial(reply.streamerNickname) }}</span>
           </div>
           <div class="chat-bubble-body">
@@ -355,7 +403,7 @@ onMounted(load)
 
         <article v-for="msg in messages" :key="msg.id" class="chat-bubble">
           <div class="chat-bubble-avatar">
-            <img v-if="msg.senderAvatar" :src="msg.senderAvatar" alt="" class="bubble-avatar-img" />
+            <img v-if="msg.senderAvatar" :src="resolveMediaUrl(msg.senderAvatar)" alt="" class="bubble-avatar-img" />
             <span v-else>{{ authorInitial(msg.senderNickname) }}</span>
           </div>
           <div class="chat-bubble-body">
@@ -396,7 +444,7 @@ onMounted(load)
 
         <article v-for="reply in privateReplies" :key="reply.id" class="chat-bubble">
           <div class="chat-bubble-avatar">
-            <img v-if="reply.streamerAvatar" :src="reply.streamerAvatar" alt="" class="bubble-avatar-img" />
+            <img v-if="reply.streamerAvatar" :src="resolveMediaUrl(reply.streamerAvatar)" alt="" class="bubble-avatar-img" />
             <span v-else>{{ authorInitial(reply.streamerNickname) }}</span>
           </div>
           <div class="chat-bubble-body">
@@ -435,13 +483,19 @@ onMounted(load)
           maxlength="500"
           :placeholder="composePlaceholder"
         />
-        <button type="submit" class="chat-send-btn" :disabled="sending">
-          {{ sending ? '...' : '发送' }}
+        <button type="submit" class="chat-send-btn" :disabled="sending || cooldown.left > 0">
+          {{ sending ? '...' : cooldown.left > 0 ? `${cooldown.left}s` : '发送' }}
         </button>
       </div>
       <div class="chat-input-footer">
         <span class="chat-char-count">{{ content.length }}/500</span>
-        <span class="chat-cooldown-text">{{ tab === 'public' ? '公开可见' : '仅博主可见' }}</span>
+        <span class="chat-cooldown-text">{{
+          cooldown.left > 0
+            ? `发送冷却 ${cooldown.left} 秒`
+            : tab === 'public'
+              ? '公开可见'
+              : '仅博主可见'
+        }}</span>
       </div>
     </form>
 

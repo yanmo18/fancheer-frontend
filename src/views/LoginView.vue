@@ -1,19 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { safeRedirect } from '@/utils/safeRedirect'
+import PasswordInput from '@/components/PasswordInput.vue'
+import { useCooldown } from '@/composables/useCooldown'
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const cooldown = useCooldown()
 
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const notice = ref('')
+
+onMounted(() => {
+  if (String(route.query.registered) === '1') {
+    notice.value = '注册成功，请登录'
+  }
+})
 
 async function submit() {
+  if (cooldown.left > 0) return
   error.value = ''
   loading.value = true
   try {
@@ -21,6 +32,7 @@ async function submit() {
     router.push(safeRedirect(route.query.redirect))
   } catch (e) {
     error.value = e instanceof Error ? e.message : '登录失败'
+    cooldown.startFromError(e, 60_000)
   } finally {
     loading.value = false
   }
@@ -39,20 +51,17 @@ async function submit() {
         <label class="auth-label">用户名</label>
         <input v-model="username" class="auth-input" required autocomplete="username" />
       </div>
-      <div class="auth-field">
-        <label class="auth-label">密码</label>
-        <input
-          v-model="password"
-          class="auth-input"
-          type="password"
-          required
-          autocomplete="current-password"
-        />
-      </div>
+      <PasswordInput
+        v-model="password"
+        label="密码"
+        autocomplete="current-password"
+        required
+      />
 
+      <p v-if="notice" class="success">{{ notice }}</p>
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" class="auth-submit" :disabled="loading">
-        {{ loading ? '登录中...' : '登录' }}
+      <button type="submit" class="auth-submit" :disabled="loading || cooldown.left > 0">
+        {{ loading ? '登录中...' : cooldown.left > 0 ? `请 ${cooldown.left} 秒后再试` : '登录' }}
       </button>
       <p class="auth-footer">
         还没有账号？
