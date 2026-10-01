@@ -44,10 +44,19 @@ function isFuture(date: string) {
   return date > todayKey
 }
 
+function isPast(date: string) {
+  return date < todayKey
+}
+
 function checkedTitle(date: string | null) {
-  if (!date || !isChecked(date)) return undefined
-  const at = checkedAt.value[date]
-  return at ? `打卡时间 ${at}` : '已打卡'
+  if (!date) return undefined
+  if (isChecked(date)) {
+    const at = checkedAt.value[date]
+    return at ? `打卡时间 ${at}` : '已打卡'
+  }
+  if (isPast(date)) return '未打卡'
+  if (isToday(date)) return '今天'
+  return undefined
 }
 
 /** silent：刷新时不拆掉日历 DOM，避免打卡后看不到「今日变绿」过渡 */
@@ -136,7 +145,19 @@ async function doCheckin() {
     await loadCalendar(true)
     await loadStats()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '打卡失败'
+    const msg = e instanceof Error ? e.message : '打卡失败'
+    error.value = msg
+    // 后端已打过但前端未标绿（常见于历史时区错位）：强制对账并标上今天
+    if (msg.includes('已经打过卡')) {
+      await loadCalendar(true)
+      await loadStats()
+      // 对账后仍缺今天：本地补标，避免「已打过但格子不绿」
+      if (!checkedSet.value.has(todayKey)) {
+        checkedDates.value = [...checkedDates.value, todayKey]
+      }
+      error.value = ''
+      message.value = '今天已经打过卡了'
+    }
   } finally {
     checking.value = false
   }
@@ -220,6 +241,7 @@ onMounted(() => {
             :class="{
               empty: !cell.date,
               checked: cell.date && isChecked(cell.date),
+              missed: cell.date && isPast(cell.date) && !isChecked(cell.date),
               today: cell.date && isToday(cell.date),
               future: cell.date && isFuture(cell.date),
               celebrate: justCheckedIn && cell.date && isToday(cell.date) && isChecked(cell.date),
@@ -232,8 +254,10 @@ onMounted(() => {
       </div>
 
       <div class="legend">
+        <span><i class="dot missed" />过期未打</span>
         <span><i class="dot checked" />已打卡</span>
         <span><i class="dot today" />今天</span>
+        <span><i class="dot future" />未到</span>
       </div>
     </div>
   </div>
@@ -293,10 +317,22 @@ onMounted(() => {
   min-width: 7.5rem;
 }
 
-.checkin-btn.success {
-  background: var(--success);
+/* 已打卡：浅绿底 + 绿字/描边，避免实心绿盖住文字 */
+.checkin-btn.success,
+.checkin-btn.success:disabled {
+  background: color-mix(in srgb, var(--success, #7d9f7a) 16%, var(--bg-card, #fff));
+  color: var(--success, #5f7f5c);
+  border: 1.5px solid var(--success, #7d9f7a);
   opacity: 1;
   cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+
+.checkin-btn.success .checkin-btn-label,
+.checkin-btn.success:disabled .checkin-btn-label {
+  color: inherit;
+  opacity: 1;
 }
 
 .checkin-btn.celebrating {
@@ -305,6 +341,8 @@ onMounted(() => {
 
 .checkin-btn-label {
   display: inline-block;
+  position: relative;
+  z-index: 1;
 }
 
 .checkin-message {
@@ -387,21 +425,37 @@ onMounted(() => {
   background: transparent;
 }
 
+/* 过去且未打卡：灰色偏暗 */
+.day-cell.missed {
+  background: color-mix(in srgb, var(--text-muted, #9a9590) 12%, transparent);
+  color: color-mix(in srgb, var(--text-muted, #9a9590) 75%, transparent);
+  font-weight: 450;
+  opacity: 0.72;
+}
+
+/* 已打卡（含过去已打）：绿色 */
 .day-cell.checked {
   background: color-mix(in srgb, var(--success) 22%, transparent);
   color: var(--success);
   font-weight: 700;
+  opacity: 1;
 }
 
-.day-cell.today {
-  box-shadow: inset 0 0 0 2px var(--accent-primary);
+/* 今天未打卡：只保留描边，不填充变色 */
+.day-cell.today:not(.checked) {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--accent-primary, #8b3352);
 }
 
-/* 今日已打：填充成功色，比「仅描边今天」更明显 */
+/* 今天已打卡：保留描边 + 明显变绿 */
 .day-cell.today.checked {
-  background: var(--success);
+  background: var(--success, #7d9f7a);
   color: #fff;
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 70%, #000);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px var(--accent-primary, #8b3352);
 }
 
 .day-cell.celebrate {
@@ -409,8 +463,11 @@ onMounted(() => {
   z-index: 1;
 }
 
+/* 未到的日子：保持原样 */
 .day-cell.future:not(.checked) {
   color: var(--text-muted);
+  background: var(--bg-secondary);
+  opacity: 1;
 }
 
 .day-num {
@@ -420,7 +477,8 @@ onMounted(() => {
 
 .legend {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
   margin-top: 1rem;
   font-size: 0.8125rem;
   color: var(--text-muted);
@@ -439,6 +497,11 @@ onMounted(() => {
   display: inline-block;
 }
 
+.dot.missed {
+  background: color-mix(in srgb, var(--text-muted, #9a9590) 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-muted, #9a9590) 55%, transparent);
+}
+
 .dot.checked {
   background: rgba(125, 159, 122, 0.2);
   box-shadow: inset 0 0 0 2px var(--success);
@@ -447,6 +510,11 @@ onMounted(() => {
 .dot.today {
   background: var(--bg-card);
   box-shadow: inset 0 0 0 2px var(--accent-primary);
+}
+
+.dot.future {
+  background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 1px var(--border-subtle, rgba(0, 0, 0, 0.12));
 }
 
 .center {

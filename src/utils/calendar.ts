@@ -7,9 +7,18 @@ export function formatDateKey(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-export function getTodayKey() {
-  const now = new Date()
-  return formatDateKey(now.getFullYear(), now.getMonth() + 1, now.getDate())
+/** 与后端一致：按 Asia/Shanghai 日历日，避免跨时区「今天」错位 */
+export function getTodayKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const year = Number(parts.find((p) => p.type === 'year')?.value)
+  const month = Number(parts.find((p) => p.type === 'month')?.value)
+  const day = Number(parts.find((p) => p.type === 'day')?.value)
+  return formatDateKey(year, month, day)
 }
 
 export function buildMonthGrid(year: number, month: number): CalendarCell[] {
