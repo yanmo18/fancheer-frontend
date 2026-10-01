@@ -15,10 +15,18 @@ onMounted(() => {
 
 <template>
   <div class="layout">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
     <AppHeader />
     <p v-if="accessDenied" class="access-denied">{{ accessDenied }}</p>
-    <div class="main-content">
-      <RouterView />
+    <div id="main-content" class="main-content" tabindex="-1">
+      <RouterView v-slot="{ Component }">
+        <Suspense v-if="Component">
+          <component :is="Component" />
+          <template #fallback>
+            <div class="layout-loading">加载中...</div>
+          </template>
+        </Suspense>
+      </RouterView>
     </div>
     <footer class="site-footer">
       <p>Fancheer · 博主个人展示站</p>
@@ -38,6 +46,13 @@ onMounted(() => {
 
 .main-content {
   flex: 1;
+}
+
+.layout-loading {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
 }
 
 .access-denied {

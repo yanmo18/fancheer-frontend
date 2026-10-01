@@ -98,7 +98,7 @@ onMounted(load)
     <header class="page-header">
       <div>
         <h1>敏感词管理</h1>
-        <p class="muted">留言与昵称等内容命中敏感词将被拦截</p>
+        <p class="muted">留言、昵称等内容会拦截命中词。英文按整词匹配，中文至少 2 字，避免 class 被 ass 误伤。</p>
       </div>
       <button type="button" class="btn btn-primary" @click="openCreate">新增敏感词</button>
     </header>

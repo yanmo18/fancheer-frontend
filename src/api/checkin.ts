@@ -7,6 +7,8 @@ export interface CheckinCalendar {
   year: number
   month: number
   checkedDates: string[]
+  /** dateKey(YYYY-MM-DD) → 打卡精确时间 */
+  checkedAt?: Record<string, string>
 }
 
 export const getCalendar = (year: number, month: number) =>
@@ -15,3 +17,12 @@ export const getCalendar = (year: number, month: number) =>
     method: 'GET',
     params: { year, month },
   })
+
+export interface CheckinStats {
+  totalDays: number
+  currentStreak: number
+  checkedToday: boolean
+}
+
+export const getStats = () =>
+  request<CheckinStats>({ url: '/api/checkin/stats', method: 'GET' })

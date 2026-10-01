@@ -62,14 +62,21 @@ const navGroups = [
 
 <template>
   <div class="admin-shell">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
     <AppHeader />
 
-    <button type="button" class="admin-mobile-toggle" @click="sidebarOpen = !sidebarOpen">
+    <button
+      type="button"
+      class="admin-mobile-toggle"
+      :aria-expanded="sidebarOpen"
+      aria-controls="admin-sidebar"
+      @click="sidebarOpen = !sidebarOpen"
+    >
       {{ sidebarOpen ? '✕' : '☰' }} 管理菜单
     </button>
 
     <div class="admin-page">
-      <aside class="admin-sidebar" :class="{ open: sidebarOpen }">
+      <aside id="admin-sidebar" class="admin-sidebar" :class="{ open: sidebarOpen }">
         <p class="admin-sidebar-user muted">{{ auth.user?.nickname }}</p>
 
         <template v-for="group in navGroups" :key="group.label">
@@ -96,8 +103,15 @@ const navGroups = [
 
       <div v-if="sidebarOpen" class="admin-backdrop" @click="closeSidebar" />
 
-      <main class="admin-content">
-        <RouterView />
+      <main id="main-content" class="admin-content" tabindex="-1">
+        <RouterView v-slot="{ Component }">
+          <Suspense v-if="Component">
+            <component :is="Component" />
+            <template #fallback>
+              <div class="admin-loading">加载中...</div>
+            </template>
+          </Suspense>
+        </RouterView>
       </main>
     </div>
   </div>
@@ -150,5 +164,12 @@ const navGroups = [
     background: rgba(0, 0, 0, 0.4);
     z-index: 9;
   }
+}
+
+.admin-loading {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
 }
 </style>

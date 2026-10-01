@@ -19,5 +19,16 @@ export const updateAvatar = (avatarId: string) =>
     data: { avatarId },
   })
 
+export const changePassword = (
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+) =>
+  request<null>({
+    url: '/api/user/password',
+    method: 'PUT',
+    data: { currentPassword, newPassword, confirmPassword },
+  })
+
 export const getAvatars = () =>
   request<AvatarItem[]>({ url: '/api/user/avatars', method: 'GET' })

@@ -1,6 +1,9 @@
-/** 首页演示兜底开关，生产环境可设 VITE_ENABLE_DEMO_FALLBACK=false 关闭 */
+/** 开发默认开启演示兜底；生产构建默认关闭，避免空数据被假内容顶上 */
 export function isDemoFallbackEnabled() {
-  return import.meta.env.VITE_ENABLE_DEMO_FALLBACK !== 'false'
+  const flag = import.meta.env.VITE_ENABLE_DEMO_FALLBACK
+  if (flag === 'false') return false
+  if (flag === 'true') return true
+  return import.meta.env.DEV
 }
 
 export interface DemoFallbackOptions {

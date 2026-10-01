@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { uploadImage } from '@/api/upload'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const props = withDefaults(
   defineProps<{
@@ -48,7 +49,7 @@ async function onFileChange(e: Event) {
     </div>
     <img
       v-if="modelValue"
-      :src="modelValue"
+      :src="resolveMediaUrl(modelValue)"
       alt=""
       class="preview"
       :class="{ square: squarePreview }"

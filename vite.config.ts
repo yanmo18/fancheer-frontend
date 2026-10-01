@@ -1,6 +1,19 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { fileURLToPath, URL } from 'node:url'
+
+const projectRoot = fileURLToPath(new URL('.', import.meta.url))
+
+/** Vite 默认 public；本地目录写成 pub 时同样作为静态根目录 */
+function resolvePublicDir() {
+  if (existsSync(join(projectRoot, 'public', 'assets', 'header.jpg'))) return 'public'
+  if (existsSync(join(projectRoot, 'pub', 'assets', 'header.jpg'))) return 'pub'
+  if (existsSync(join(projectRoot, 'public', 'header.jpg'))) return 'public'
+  if (existsSync(join(projectRoot, 'pub', 'header.jpg'))) return 'pub'
+  return 'public'
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -8,6 +21,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    publicDir: resolvePublicDir(),
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -25,6 +39,13 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
+      },
+    },
+    preview: {
+      port: 4173,
+      proxy: {
+        '/api': { target: apiTarget, changeOrigin: true },
+        '/uploads': { target: apiTarget, changeOrigin: true },
       },
     },
     optimizeDeps: {

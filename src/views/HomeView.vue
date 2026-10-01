@@ -356,7 +356,13 @@ onMounted(loadHome)
         </div>
       </RevealBlock>
 
-      <RevealBlock v-if="songs.length" variant="music" tag="section" class="section">
+      <RevealBlock
+        v-if="songs.length"
+        id="home-music"
+        variant="music"
+        tag="section"
+        class="section"
+      >
         <div class="section-header">
           <div>
             <div class="section-label">原创作品</div>
@@ -676,15 +682,21 @@ onMounted(loadHome)
 
 .gallery-lightbox {
   position: relative;
-  max-width: min(100%, 960px);
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
 }
 
 .gallery-lightbox img {
-  max-width: 100%;
-  max-height: 90vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  border-radius: 8px;
   display: block;
+  pointer-events: auto;
 }
 
 .sr-only {
@@ -701,7 +713,7 @@ onMounted(loadHome)
 
 .lightbox-close,
 .lightbox-nav {
-  position: absolute;
+  position: fixed;
   border: none;
   background: rgba(0, 0, 0, 0.62);
   color: #fff;
@@ -711,6 +723,7 @@ onMounted(loadHome)
   place-items: center;
   z-index: 3;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
 }
 
 .lightbox-close {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { uploadAudio } from '@/api/upload'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const props = withDefaults(
   defineProps<{
@@ -43,7 +44,7 @@ async function onFileChange(e: Event) {
       <input type="file" accept="audio/*,.m4a,audio/mp4,audio/x-m4a" :disabled="uploading" @change="onFileChange" />
       <span v-if="uploading" class="muted">上传中...</span>
     </div>
-    <audio v-if="modelValue" controls :src="modelValue" class="preview" />
+    <audio v-if="modelValue" controls :src="resolveMediaUrl(modelValue)" class="preview" />
     <input
       :value="modelValue"
       class="url-input"

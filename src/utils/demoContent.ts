@@ -50,9 +50,11 @@ export function withDemoBanners(banners: BannerItem[], options?: DemoFallbackOpt
     if (!shouldApplyDemoFallback(options)) return []
     return DEMO_BANNER_IMAGES.slice(0, MAX_HOME_BANNERS).map((imageUrl, index) => ({
       id: `demo-banner-${index + 1}`,
-      title: ['欢迎来到 Fancheer', '博主形象展示', '音乐与日常', '创作记录'][index] ?? 'Fancheer',
+      title:
+        ['欢迎来到个人站', '活动日历', '最近单曲发布', '创作记录'][index] ?? 'Fancheer',
       imageUrl,
-      linkUrl: '/',
+      // Empty / activities / music-anchor — never use '/' (would reload home)
+      linkUrl: ['', '/activities', '#home-music', ''][index] ?? '',
       sortOrder: index + 1,
     }))
   }

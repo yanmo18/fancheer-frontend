@@ -5,6 +5,7 @@ import type { AdminAvatarItem } from '@/api/admin/avatar'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
 import { formatDateTime } from '@/utils/datetime'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const list = ref<AdminAvatarItem[]>([])
 const page = ref(1)
@@ -121,7 +122,7 @@ onMounted(load)
         </thead>
         <tbody>
           <tr v-for="item in list" :key="item.id">
-            <td><img :src="item.url" alt="" class="thumb" /></td>
+            <td><img :src="resolveMediaUrl(item.url)" alt="" class="thumb" /></td>
             <td>{{ item.sortOrder }}</td>
             <td>{{ formatDateTime(item.createdAt) }}</td>
             <td>

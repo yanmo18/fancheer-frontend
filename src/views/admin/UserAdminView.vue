@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import type { UserRole } from '@/types/api'
 import AppModal from '@/components/AppModal.vue'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const auth = useAuthStore()
 
@@ -210,7 +211,7 @@ onMounted(load)
           <tr v-for="item in list" :key="item.id">
             <td>
               <div class="user-cell">
-                <img v-if="item.avatar" :src="item.avatar" alt="" class="avatar" />
+                <img v-if="item.avatar" :src="resolveMediaUrl(item.avatar)" alt="" class="avatar" />
                 <span v-else class="avatar fallback">{{ item.nickname.slice(0, 1) }}</span>
                 <span>{{ item.nickname }}</span>
               </div>

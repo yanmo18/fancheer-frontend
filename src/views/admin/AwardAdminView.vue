@@ -5,6 +5,7 @@ import type { AdminAwardItem } from '@/api/admin/award'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
 import { formatDate, toDateInputValue } from '@/utils/datetime'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const list = ref<AdminAwardItem[]>([])
 const page = ref(1)
@@ -159,7 +160,7 @@ onMounted(load)
         <tbody>
           <tr v-for="item in list" :key="item.id">
             <td>
-              <img v-if="item.imageUrl" :src="item.imageUrl" alt="" class="thumb" />
+              <img v-if="item.imageUrl" :src="resolveMediaUrl(item.imageUrl)" alt="" class="thumb" />
               <span v-else class="muted">—</span>
             </td>
             <td>

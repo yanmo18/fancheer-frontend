@@ -4,6 +4,7 @@ import * as galleryApi from '@/api/admin/gallery'
 import type { AdminGalleryItem, GalleryCategory } from '@/api/admin/gallery'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const categoryLabels: Record<GalleryCategory, string> = {
   anime: '二次元',
@@ -166,7 +167,7 @@ onMounted(load)
         </thead>
         <tbody>
           <tr v-for="item in list" :key="item.id">
-            <td><img :src="item.imageUrl" alt="" class="thumb" /></td>
+            <td><img :src="resolveMediaUrl(item.imageUrl)" alt="" class="thumb" /></td>
             <td>{{ item.title || '—' }}</td>
             <td>{{ categoryLabels[item.category] }}</td>
             <td>{{ item.sortOrder }}</td>

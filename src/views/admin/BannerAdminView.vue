@@ -5,6 +5,7 @@ import type { AdminBannerItem } from '@/api/admin/banner'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
 import { MAX_HOME_BANNERS } from '@/constants/banner'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const list = ref<AdminBannerItem[]>([])
 const page = ref(1)
@@ -171,7 +172,7 @@ onMounted(load)
         </thead>
         <tbody>
           <tr v-for="item in list" :key="item.id">
-            <td><img :src="item.imageUrl" alt="" class="thumb" /></td>
+            <td><img :src="resolveMediaUrl(item.imageUrl)" alt="" class="thumb" /></td>
             <td>{{ item.title || '—' }}</td>
             <td>{{ item.sortOrder }}</td>
             <td>{{ item.isVisible ? '是' : '否' }}</td>
@@ -200,10 +201,17 @@ onMounted(load)
           标题
           <input v-model="form.title" maxlength="100" />
         </label>
-        <ImageUpload v-model="form.imageUrl" category="banners" />
+        <ImageUpload
+          v-model="form.imageUrl"
+          category="banners"
+          hint="建议横图（约 16:9）。竖图会完整显示、两侧留白，不会被裁成大头照。"
+        />
         <label>
           跳转链接
-          <input v-model="form.linkUrl" placeholder="/ 或 https://..." />
+          <input
+            v-model="form.linkUrl"
+            placeholder="留空=放大图片；/activities；#home-music；或 https://..."
+          />
         </label>
         <label>
           排序（越大越靠前）

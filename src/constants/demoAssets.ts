@@ -1,4 +1,4 @@
-/** 本地 public/assets 演示素材（博主形象） */
+/** 本地 public/assets（或 pub/assets）演示素材，由 Vite publicDir 映射到 /assets */
 export const ASSET_BASE = '/assets'
 
 export const demoHeader = `${ASSET_BASE}/header.jpg`
@@ -14,7 +14,7 @@ export const DEMO_ANIME_PICTURES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1
 export const DEMO_REAL_ITEMS = [
   { url: demoHeader, title: '日常随拍' },
   { url: demoPicture(14), title: '午后时光' },
-  { url: demoPicture(15), title: '街拍记录' },
+  { url: demoPicture(17), title: '街拍记录' },
   { url: demoPicture(10), title: '舞台幕后' },
   { url: demoPicture(12), title: '旅行片段' },
   { url: demoPicture(17), title: '光影瞬间' },

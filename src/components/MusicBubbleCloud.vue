@@ -2,6 +2,7 @@
 import * as d3 from 'd3'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { SongItem } from '@/types/api'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const props = defineProps<{
   songs: SongItem[]
@@ -120,7 +121,7 @@ function buildSimulation() {
       id: song.id,
       index,
       title: song.title,
-      coverUrl: song.coverUrl,
+      coverUrl: resolveMediaUrl(song.coverUrl),
       coverSize: layout.coverSize,
       width: layout.width,
       height: layout.height,
@@ -165,6 +166,7 @@ function onCoverError(event: Event) {
 }
 
 function onPointerDown(event: PointerEvent, node: BubbleNode) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return
   event.preventDefault()
   draggingNode = node
   dragMoved = false
@@ -173,8 +175,14 @@ function onPointerDown(event: PointerEvent, node: BubbleNode) {
   node.fx = node.x
   node.fy = node.y
   simulation?.alphaTarget(0.35).restart()
+  try {
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  } catch {
+    /* ignore */
+  }
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
 }
 
 function onPointerMove(event: PointerEvent) {
@@ -201,6 +209,7 @@ function onPointerUp() {
   simulation?.alphaTarget(0)
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
 }
 
 function onBubbleKeydown(event: KeyboardEvent, node: BubbleNode) {
@@ -236,6 +245,7 @@ watch(
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
   resizeObserver?.disconnect()
   stopSimulation()
 })
@@ -245,7 +255,7 @@ onBeforeUnmount(() => {
   <div ref="containerRef" class="music-bubble-cloud" aria-label="音乐作品词云">
     <div class="music-bubble-cloud-bg" aria-hidden="true" />
     <div class="music-bubble-center-ring" aria-hidden="true" />
-    <p class="music-bubble-hint muted">拖动方块探索 · 点击播放并居中</p>
+    <p class="music-bubble-hint muted">拖动方块探索 · 点一下播放并居中</p>
 
     <button
       v-for="node in nodes"

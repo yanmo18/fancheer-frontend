@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import * as checkinApi from '@/api/checkin'
 import { buildMonthGrid, getTodayKey, shiftMonth } from '@/utils/calendar'
 
@@ -7,10 +7,18 @@ const now = new Date()
 const year = ref(now.getFullYear())
 const month = ref(now.getMonth() + 1)
 const checkedDates = ref<string[]>([])
+const checkedAt = ref<Record<string, string>>({})
+const totalDays = ref(0)
+const currentStreak = ref(0)
 const loading = ref(false)
 const checking = ref(false)
 const message = ref('')
 const error = ref('')
+/** 刚打卡成功时的庆祝态，驱动按钮 / 今日格 / 统计数字动画 */
+const justCheckedIn = ref(false)
+const celebrateStats = ref(false)
+const bumpTotal = ref(false)
+const bumpStreak = ref(false)
 
 const weekdays = ['日', '一', '二', '三', '四', '五', '六']
 const todayKey = getTodayKey()
@@ -36,31 +44,97 @@ function isFuture(date: string) {
   return date > todayKey
 }
 
-async function loadCalendar() {
-  loading.value = true
+function checkedTitle(date: string | null) {
+  if (!date || !isChecked(date)) return undefined
+  const at = checkedAt.value[date]
+  return at ? `打卡时间 ${at}` : '已打卡'
+}
+
+/** silent：刷新时不拆掉日历 DOM，避免打卡后看不到「今日变绿」过渡 */
+async function loadCalendar(silent = false) {
+  if (!silent) {
+    loading.value = true
+  }
   error.value = ''
   try {
     const data = await checkinApi.getCalendar(year.value, month.value)
     checkedDates.value = data.checkedDates
+    checkedAt.value = data.checkedAt ?? {}
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
+function pulseStats(totalChanged: boolean, streakChanged: boolean) {
+  if (!totalChanged && !streakChanged) return
+  bumpTotal.value = totalChanged
+  bumpStreak.value = streakChanged
+  celebrateStats.value = true
+  window.setTimeout(() => {
+    celebrateStats.value = false
+    bumpTotal.value = false
+    bumpStreak.value = false
+  }, 700)
+}
+
+async function loadStats() {
+  try {
+    const data = await checkinApi.getStats()
+    const totalChanged = data.totalDays !== totalDays.value
+    const streakChanged = data.currentStreak !== currentStreak.value
+    totalDays.value = data.totalDays
+    currentStreak.value = data.currentStreak
+    // 仅在数值真正变化时 bump，避免乐观更新后的对账清掉正在播的动画
+    pulseStats(totalChanged, streakChanged)
+  } catch {
+    /* 日历仍可单独展示 */
+  }
+}
+
+function triggerCelebrate() {
+  justCheckedIn.value = true
+  window.setTimeout(() => {
+    justCheckedIn.value = false
+  }, 1200)
+}
+
 async function doCheckin() {
+  if (checking.value || checkedToday.value) return
   checking.value = true
   message.value = ''
   error.value = ''
   try {
     const res = await checkinApi.checkin()
     message.value = res.message
+
+    // 乐观更新：立刻让今日格 / 按钮态变化，再后台静默对账
+    if (!checkedSet.value.has(todayKey)) {
+      checkedDates.value = [...checkedDates.value, todayKey]
+    }
+    const stamp = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    checkedAt.value = {
+      ...checkedAt.value,
+      [todayKey]: `${todayKey} ${pad(stamp.getHours())}:${pad(stamp.getMinutes())}:${pad(stamp.getSeconds())}`,
+    }
+    totalDays.value += 1
+    currentStreak.value += 1
+    pulseStats(true, true)
+
     if (!isCurrentMonth.value) {
       year.value = now.getFullYear()
       month.value = now.getMonth() + 1
     }
-    await loadCalendar()
+
+    await nextTick()
+    triggerCelebrate()
+
+    await loadCalendar(true)
+    await loadStats()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '打卡失败'
   } finally {
@@ -75,7 +149,10 @@ function changeMonth(delta: number) {
   loadCalendar()
 }
 
-onMounted(loadCalendar)
+onMounted(() => {
+  loadCalendar()
+  loadStats()
+})
 </script>
 
 <template>
@@ -84,15 +161,38 @@ onMounted(loadCalendar)
       <h2 class="user-card-title"><span class="user-card-title-icon">📅</span>每日打卡</h2>
       <p class="muted checkin-desc">记录你来访的每一天</p>
 
+      <div
+        class="checkin-stats"
+        :class="{ celebrating: celebrateStats }"
+        aria-label="打卡统计"
+      >
+        <div class="checkin-stat" :class="{ bump: bumpTotal }">
+          <strong>{{ totalDays }}</strong>
+          <span>累计天数</span>
+        </div>
+        <div class="checkin-stat" :class="{ bump: bumpStreak }">
+          <strong>{{ currentStreak }}</strong>
+          <span>连续天数</span>
+        </div>
+      </div>
+
       <button
         type="button"
         class="user-btn user-btn-primary checkin-btn"
+        :class="{
+          success: checkedToday,
+          celebrating: justCheckedIn,
+        }"
         :disabled="checking || loading || checkedToday"
         @click="doCheckin"
       >
-        {{ checkedToday ? '今日已打卡' : checking ? '打卡中...' : '今日打卡' }}
+        <span class="checkin-btn-label">
+          {{ checkedToday ? '今日已打卡' : checking ? '打卡中...' : '今日打卡' }}
+        </span>
       </button>
-      <p v-if="message" class="success">{{ message }}</p>
+      <p v-if="message" class="success checkin-message" :class="{ show: !!message }">
+        {{ message }}
+      </p>
       <p v-if="error" class="error">{{ error }}</p>
     </div>
 
@@ -122,9 +222,11 @@ onMounted(loadCalendar)
               checked: cell.date && isChecked(cell.date),
               today: cell.date && isToday(cell.date),
               future: cell.date && isFuture(cell.date),
+              celebrate: justCheckedIn && cell.date && isToday(cell.date) && isChecked(cell.date),
             }"
+            :title="checkedTitle(cell.date)"
           >
-            <span v-if="cell.day">{{ cell.day }}</span>
+            <span v-if="cell.day" class="day-num">{{ cell.day }}</span>
           </div>
         </div>
       </div>
@@ -146,8 +248,68 @@ onMounted(loadCalendar)
   margin: -0.5rem 0 1rem;
 }
 
+.checkin-stats {
+  display: flex;
+  gap: 1rem;
+  margin: 0 0 1rem;
+}
+
+.checkin-stat {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+  border-radius: 12px;
+  background: var(--bg-muted, rgba(139, 51, 82, 0.06));
+  text-align: center;
+  transition: background 0.35s ease;
+}
+
+.checkin-stats.celebrating .checkin-stat.bump {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+}
+
+.checkin-stat strong {
+  display: block;
+  font-size: 1.375rem;
+  line-height: 1.2;
+  color: var(--accent-primary, #8b3352);
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.35s cubic-bezier(0.34, 1.35, 0.64, 1), color 0.35s ease;
+}
+
+.checkin-stat.bump strong {
+  animation: checkin-stat-bump 0.65s cubic-bezier(0.34, 1.35, 0.64, 1);
+  color: var(--success);
+}
+
+.checkin-stat span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .checkin-btn {
   align-self: flex-start;
+  position: relative;
+  overflow: hidden;
+  min-width: 7.5rem;
+}
+
+.checkin-btn.success {
+  background: var(--success);
+  opacity: 1;
+  cursor: default;
+}
+
+.checkin-btn.celebrating {
+  animation: checkin-btn-pop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.checkin-btn-label {
+  display: inline-block;
+}
+
+.checkin-message {
+  margin-top: 0.75rem;
+  animation: checkin-msg-in 0.4s ease both;
 }
 
 .calendar-card {
@@ -214,6 +376,11 @@ onMounted(loadCalendar)
   font-size: 0.875rem;
   color: var(--text-secondary);
   background: var(--bg-secondary);
+  transition:
+    background 0.35s ease,
+    color 0.35s ease,
+    transform 0.35s ease,
+    box-shadow 0.35s ease;
 }
 
 .day-cell.empty {
@@ -221,7 +388,7 @@ onMounted(loadCalendar)
 }
 
 .day-cell.checked {
-  background: rgba(125, 159, 122, 0.15);
+  background: color-mix(in srgb, var(--success) 22%, transparent);
   color: var(--success);
   font-weight: 700;
 }
@@ -230,8 +397,25 @@ onMounted(loadCalendar)
   box-shadow: inset 0 0 0 2px var(--accent-primary);
 }
 
+/* 今日已打：填充成功色，比「仅描边今天」更明显 */
+.day-cell.today.checked {
+  background: var(--success);
+  color: #fff;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 70%, #000);
+}
+
+.day-cell.celebrate {
+  animation: checkin-day-celebrate 0.85s cubic-bezier(0.34, 1.35, 0.64, 1);
+  z-index: 1;
+}
+
 .day-cell.future:not(.checked) {
   color: var(--text-muted);
+}
+
+.day-num {
+  display: block;
+  line-height: 1;
 }
 
 .legend {
@@ -271,6 +455,71 @@ onMounted(loadCalendar)
 }
 
 .success {
-  color: #16a34a;
+  color: var(--success, #7d9f7a);
+}
+
+@keyframes checkin-btn-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkin-day-celebrate {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.18);
+  }
+  55% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkin-stat-bump {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    transform: scale(1.18) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes checkin-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkin-btn.celebrating,
+  .day-cell.celebrate,
+  .checkin-stat.bump strong,
+  .checkin-message {
+    animation: none;
+  }
+
+  .day-cell,
+  .checkin-stat,
+  .checkin-stat strong {
+    transition: none;
+  }
 }
 </style>

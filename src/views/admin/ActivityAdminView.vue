@@ -5,6 +5,7 @@ import type { AdminActivityItem } from '@/api/admin/activity'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
 import { formatDateTime, fromDatetimeLocalValue, toDatetimeLocalValue } from '@/utils/datetime'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const list = ref<AdminActivityItem[]>([])
 const page = ref(1)
@@ -168,7 +169,7 @@ onMounted(load)
         <tbody>
           <tr v-for="item in list" :key="item.id">
             <td>
-              <img v-if="item.coverUrl" :src="item.coverUrl" alt="" class="thumb" />
+              <img v-if="item.coverUrl" :src="resolveMediaUrl(item.coverUrl)" alt="" class="thumb" />
               <span v-else class="muted">—</span>
             </td>
             <td>{{ item.title }}</td>

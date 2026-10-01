@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import * as publicApi from '@/api/public'
 import { resolveAvatarUrl } from '@/utils/avatar'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -45,7 +45,7 @@ function navActive(path: string) {
 }
 
 const navAvatarUrl = () =>
-  resolveAvatarUrl(auth.user?.avatar, auth.user?.avatarUrl)
+  resolveMediaUrl(resolveAvatarUrl(auth.user?.avatar, auth.user?.avatarUrl))
 </script>
 
 <template>
@@ -55,20 +55,23 @@ const navAvatarUrl = () =>
       <span class="nav-logo-sub">{{ siteSub }}</span>
     </RouterLink>
 
-    <button type="button" class="nav-mobile-toggle" aria-label="菜单" @click="menuOpen = !menuOpen">
+    <button
+      type="button"
+      class="nav-mobile-toggle"
+      aria-label="菜单"
+      :aria-expanded="menuOpen"
+      aria-controls="primary-nav"
+      @click="menuOpen = !menuOpen"
+    >
       {{ menuOpen ? '✕' : '☰' }}
     </button>
 
-    <div class="nav-links" :class="{ open: menuOpen }">
-      <RouterLink to="/" class="nav-link" :class="{ active: navActive('/') && route.path === '/' }" @click="closeMenu">
+    <!-- 桌面：链接与右侧操作仍分两块 -->
+    <div id="primary-nav" class="nav-links desktop-only">
+      <RouterLink to="/" class="nav-link" :class="{ active: navActive('/') && route.path === '/' }">
         首页
       </RouterLink>
-      <RouterLink
-        to="/activities"
-        class="nav-link"
-        :class="{ active: navActive('/activities') }"
-        @click="closeMenu"
-      >
+      <RouterLink to="/activities" class="nav-link" :class="{ active: navActive('/activities') }">
         活动日历
       </RouterLink>
       <RouterLink
@@ -76,7 +79,6 @@ const navAvatarUrl = () =>
         to="/messages"
         class="nav-link"
         :class="{ active: navActive('/messages') }"
-        @click="closeMenu"
       >
         聊天室
       </RouterLink>
@@ -85,7 +87,6 @@ const navAvatarUrl = () =>
         to="/checkin"
         class="nav-link"
         :class="{ active: navActive('/checkin') }"
-        @click="closeMenu"
       >
         每日打卡
       </RouterLink>
@@ -94,37 +95,108 @@ const navAvatarUrl = () =>
         to="/profile"
         class="nav-link"
         :class="{ active: navActive('/profile') }"
-        @click="closeMenu"
       >
         个人中心
       </RouterLink>
-      <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link" :class="{ active: navActive('/admin') }" @click="closeMenu">
+      <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link" :class="{ active: navActive('/admin') }">
         管理
       </RouterLink>
     </div>
 
-    <div class="nav-right" :class="{ open: menuOpen }">
+    <div class="nav-right desktop-only">
       <button type="button" class="theme-toggle" :aria-label="themeLabel" @click="toggleTheme">
         <span class="theme-toggle-icon">{{ themeIcon }}</span>
         <span>{{ themeLabel }}</span>
       </button>
 
       <template v-if="auth.isLoggedIn">
-        <RouterLink to="/profile" class="nav-avatar nav-avatar-link" @click="closeMenu">
-          <img
-            v-if="navAvatarUrl()"
-            :src="navAvatarUrl()"
-            alt=""
-            class="nav-avatar-img"
-          />
+        <RouterLink to="/profile" class="nav-avatar nav-avatar-link">
+          <img v-if="navAvatarUrl()" :src="navAvatarUrl()" alt="" class="nav-avatar-img" />
           <span v-else>{{ (auth.user?.nickname || auth.user?.username || '?').slice(0, 1).toUpperCase() }}</span>
         </RouterLink>
         <button type="button" class="btn btn-ghost btn-sm nav-logout" @click="handleLogout">退出</button>
       </template>
       <template v-else>
-        <RouterLink to="/login" class="btn btn-ghost btn-sm" @click="closeMenu">登录</RouterLink>
-        <RouterLink to="/register" class="btn btn-primary btn-sm" @click="closeMenu">注册</RouterLink>
+        <RouterLink to="/login" class="btn btn-ghost btn-sm">登录</RouterLink>
+        <RouterLink to="/register" class="btn btn-primary btn-sm">注册</RouterLink>
       </template>
+    </div>
+
+    <!-- 移动端：单一面板，游客/登录用户都不会在中间留缝 -->
+    <div class="nav-mobile-panel" :class="{ open: menuOpen }" id="mobile-nav">
+      <div class="nav-mobile-links">
+        <RouterLink
+          to="/"
+          class="nav-link"
+          :class="{ active: navActive('/') && route.path === '/' }"
+          @click="closeMenu"
+        >
+          首页
+        </RouterLink>
+        <RouterLink
+          to="/activities"
+          class="nav-link"
+          :class="{ active: navActive('/activities') }"
+          @click="closeMenu"
+        >
+          活动日历
+        </RouterLink>
+        <RouterLink
+          v-if="auth.isLoggedIn"
+          to="/messages"
+          class="nav-link"
+          :class="{ active: navActive('/messages') }"
+          @click="closeMenu"
+        >
+          聊天室
+        </RouterLink>
+        <RouterLink
+          v-if="auth.isLoggedIn"
+          to="/checkin"
+          class="nav-link"
+          :class="{ active: navActive('/checkin') }"
+          @click="closeMenu"
+        >
+          每日打卡
+        </RouterLink>
+        <RouterLink
+          v-if="auth.isLoggedIn"
+          to="/profile"
+          class="nav-link"
+          :class="{ active: navActive('/profile') }"
+          @click="closeMenu"
+        >
+          个人中心
+        </RouterLink>
+        <RouterLink
+          v-if="auth.isAdmin"
+          to="/admin"
+          class="nav-link"
+          :class="{ active: navActive('/admin') }"
+          @click="closeMenu"
+        >
+          管理
+        </RouterLink>
+      </div>
+
+      <div class="nav-mobile-actions">
+        <button type="button" class="theme-toggle" :aria-label="themeLabel" @click="toggleTheme">
+          <span class="theme-toggle-icon">{{ themeIcon }}</span>
+          <span>{{ themeLabel }}</span>
+        </button>
+
+        <template v-if="auth.isLoggedIn">
+          <RouterLink to="/profile" class="nav-avatar nav-avatar-link" @click="closeMenu">
+            <img v-if="navAvatarUrl()" :src="navAvatarUrl()" alt="" class="nav-avatar-img" />
+            <span v-else>{{ (auth.user?.nickname || auth.user?.username || '?').slice(0, 1).toUpperCase() }}</span>
+          </RouterLink>
+          <button type="button" class="btn btn-ghost btn-sm nav-logout" @click="handleLogout">退出</button>
+        </template>
+        <template v-else>
+          <RouterLink to="/login" class="btn btn-ghost btn-sm" @click="closeMenu">登录</RouterLink>
+          <RouterLink to="/register" class="btn btn-primary btn-sm" @click="closeMenu">注册</RouterLink>
+        </template>
+      </div>
     </div>
 
     <div v-if="menuOpen" class="nav-backdrop" @click="closeMenu" />
@@ -170,47 +242,60 @@ const navAvatarUrl = () =>
   display: none;
 }
 
+.nav-mobile-panel {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .nav-mobile-toggle {
     display: grid;
     place-items: center;
   }
 
-  .nav-links,
-  .nav-right {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .nav-mobile-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     position: fixed;
     left: 0;
     right: 0;
+    top: 60px;
     background: var(--nav-bg);
     backdrop-filter: blur(24px);
     border-bottom: 1px solid var(--border-subtle);
-    padding: 0.75rem 1rem;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
+    padding: 0.75rem 1rem 1rem;
     transform: translateY(-120%);
     opacity: 0;
     pointer-events: none;
     transition: transform 0.2s, opacity 0.2s;
     z-index: 101;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
   }
 
-  .nav-links {
-    top: 60px;
-  }
-
-  .nav-right {
-    top: calc(60px + 13.5rem);
-    flex-direction: row;
-    flex-wrap: wrap;
-    border-top: none;
-  }
-
-  .nav-links.open,
-  .nav-right.open {
+  .nav-mobile-panel.open {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;
+  }
+
+  .nav-mobile-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .nav-mobile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-subtle);
   }
 
   .nav-link {

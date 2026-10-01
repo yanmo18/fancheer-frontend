@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ECharts } from 'echarts'
-import type { GraphData } from '@/types/api'
+import type { GraphCharacter, GraphData } from '@/types/api'
+import AppModal from '@/components/AppModal.vue'
 import { useTheme } from '@/composables/useTheme'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const props = defineProps<{
   data: GraphData
@@ -11,6 +13,18 @@ const props = defineProps<{
 const { theme } = useTheme()
 
 const chartRef = ref<HTMLDivElement | null>(null)
+const selectedCharacter = ref<GraphCharacter | null>(null)
+const isTouchUi = ref(false)
+const graphHint = computed(() =>
+  isTouchUi.value
+    ? '单指拖动画布 · 拖节点换位置 · 双指缩放 · 点节点看介绍'
+    : '滚轮缩放 · 拖拽画布平移 · 拖拽节点调整位置 · 点击节点查看详情',
+)
+
+function syncTouchUi() {
+  isTouchUi.value = window.matchMedia('(hover: none), (max-width: 768px)').matches
+}
+
 let chart: ECharts | null = null
 let echartsModule: typeof import('echarts') | null = null
 let resizeObserver: ResizeObserver | null = null
@@ -76,10 +90,11 @@ function nodeId(value: string | number | undefined | null) {
 }
 
 function resolveImageUrl(url: string) {
-  if (/^https?:\/\//i.test(url)) return url
-  if (url.startsWith('//')) return `${window.location.protocol}${url}`
-  if (url.startsWith('/')) return `${window.location.origin}${url}`
-  return url
+  const resolved = resolveMediaUrl(url)
+  if (/^https?:\/\//i.test(resolved)) return resolved
+  if (resolved.startsWith('//')) return `${window.location.protocol}${resolved}`
+  if (resolved.startsWith('/')) return `${window.location.origin}${resolved}`
+  return resolved
 }
 
 function isUsableAvatarUrl(url?: string | null) {
@@ -343,11 +358,11 @@ function buildOption(avatarMap: Map<string, string>) {
         draggable: true,
         scaleLimit: { min: 0.4, max: 3 },
         force: {
-          repulsion: Math.max(320, nodeCount * 28),
-          gravity: centerId ? 0.12 : 0.08,
-          edgeLength: nodeCount > 8 ? [90, 160] : [120, 200],
-          friction: 0.55,
-          layoutAnimation: true,
+          repulsion: Math.min(1100, Math.max(280, nodeCount * 48)),
+          gravity: nodeCount > 14 ? 0.06 : centerId ? 0.12 : 0.08,
+          edgeLength: nodeCount > 14 ? [70, 130] : nodeCount > 8 ? [90, 160] : [120, 200],
+          friction: nodeCount > 14 ? 0.72 : 0.55,
+          layoutAnimation: nodeCount < 24,
         },
         label: {
           show: true,
@@ -387,13 +402,26 @@ async function renderChart(replace = false) {
 
   if (!chart) {
     chart = echartsModule.init(chartRef.value, undefined, { renderer: 'canvas' })
+    chart.on('click', (params) => {
+      if (params.dataType !== 'node') return
+      const raw = params.data as { id?: string } | undefined
+      const id = nodeId(raw?.id ?? params.name)
+      const found = props.data.characters.find((c) => nodeId(c.id) === id)
+      if (found) selectedCharacter.value = found
+    })
   }
 
   chart.setOption(buildOption(avatarMap), replace || !hasOption)
   hasOption = true
 }
 
+function closeCharacterModal() {
+  selectedCharacter.value = null
+}
+
 onMounted(async () => {
+  syncTouchUi()
+  window.addEventListener('resize', syncTouchUi)
   echartsModule = await import('echarts')
   await renderChart(true)
 
@@ -417,6 +445,7 @@ watch(theme, async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncTouchUi)
   resizeObserver?.disconnect()
   chart?.dispose()
   chart = null
@@ -425,9 +454,33 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="data.characters.length" class="graph-shell">
-    <div ref="chartRef" class="graph-wrapper" role="img" aria-label="关系图谱" />
-    <p class="graph-hint">滚轮缩放 · 拖拽画布平移 · 拖拽节点调整位置 · 圆形头像 · 悬浮查看详情</p>
+  <div class="graph-shell">
+    <div
+      v-if="data.characters.length"
+      ref="chartRef"
+      class="graph-wrapper"
+      role="img"
+      aria-label="关系图谱"
+    />
+    <p v-if="data.characters.length" class="graph-hint">{{ graphHint }}</p>
+    <p v-else class="graph-hint">暂无关系图谱</p>
+
+    <AppModal :open="Boolean(selectedCharacter)" title-id="graph-char-title" @close="closeCharacterModal">
+      <div v-if="selectedCharacter" class="graph-char-modal" role="document">
+        <button type="button" class="graph-char-close" aria-label="关闭" @click="closeCharacterModal">×</button>
+        <img
+          v-if="selectedCharacter.avatarUrl"
+          :src="resolveMediaUrl(selectedCharacter.avatarUrl)"
+          alt=""
+          class="graph-char-avatar"
+        />
+        <div v-else class="graph-char-avatar graph-char-avatar--placeholder" aria-hidden="true">
+          {{ selectedCharacter.name.slice(0, 1) }}
+        </div>
+        <h3 id="graph-char-title" class="graph-char-name">{{ selectedCharacter.name }}</h3>
+        <p class="graph-char-bio">{{ selectedCharacter.bio?.trim() || '暂无简介' }}</p>
+      </div>
+    </AppModal>
   </div>
 </template>
 
@@ -453,6 +506,61 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
   color: var(--text-muted);
   letter-spacing: 0.02em;
+}
+
+.graph-char-modal {
+  position: relative;
+  width: min(360px, calc(100vw - 2rem));
+  margin: auto;
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-radius: 16px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  text-align: center;
+}
+
+.graph-char-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.graph-char-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 0.75rem;
+  display: block;
+}
+
+.graph-char-avatar--placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--accent-primary, #8b3352);
+  color: #fff;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.graph-char-name {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  color: var(--text-primary, #3d3028);
+}
+
+.graph-char-bio {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-secondary, #5a6068);
+  white-space: pre-wrap;
 }
 
 @media (max-width: 768px) {

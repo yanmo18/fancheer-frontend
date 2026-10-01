@@ -5,6 +5,7 @@ import type { AdminSongItem } from '@/api/admin/song'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AudioUpload from '@/components/admin/AudioUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const list = ref<AdminSongItem[]>([])
 const page = ref(1)
@@ -163,7 +164,7 @@ onMounted(load)
         <tbody>
           <tr v-for="item in list" :key="item.id">
             <td>
-              <img v-if="item.coverUrl" :src="item.coverUrl" alt="" class="thumb cover" />
+              <img v-if="item.coverUrl" :src="resolveMediaUrl(item.coverUrl)" alt="" class="thumb cover" />
               <span v-else class="muted">—</span>
             </td>
             <td>{{ item.title }}</td>

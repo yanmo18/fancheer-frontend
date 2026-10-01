@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import MusicBubbleCloud from '@/components/MusicBubbleCloud.vue'
 import type { SongItem } from '@/types/api'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const props = defineProps<{
   songs: SongItem[]
@@ -20,7 +21,7 @@ const playError = ref('')
 async function startPlayback(index: number) {
   const song = props.songs[index]
   if (!song?.audioUrl?.trim()) {
-    playError.value = '演示曲目暂无音频，后台恢复数据后可播放'
+    playError.value = '这首还没有音频，素材补上后即可播放'
     hasStarted.value = false
     isPlaying.value = false
     currentIndex.value = index
@@ -56,6 +57,7 @@ function togglePlayback() {
       isPlaying.value = true
     }).catch(() => {
       isPlaying.value = false
+      playError.value = '无法播放音频，请稍后重试'
     })
   }
 }
@@ -64,8 +66,20 @@ const vinylActive = computed(() => isPlaying.value && hasStarted.value)
 
 function onEnded() {
   if (!props.songs.length) return
-  const next = currentIndex.value < props.songs.length - 1 ? currentIndex.value + 1 : 0
-  startPlayback(next)
+  for (let step = 1; step <= props.songs.length; step++) {
+    const next = (currentIndex.value + step) % props.songs.length
+    if (props.songs[next]?.audioUrl?.trim()) {
+      startPlayback(next)
+      return
+    }
+  }
+  isPlaying.value = false
+}
+
+function onAudioError() {
+  if (!currentSong.value?.audioUrl?.trim()) return
+  isPlaying.value = false
+  playError.value = '音频无法加载，请检查文件或稍后再试'
 }
 
 watch(currentIndex, async () => {
@@ -76,6 +90,7 @@ watch(currentIndex, async () => {
     isPlaying.value = true
   } catch {
     isPlaying.value = false
+    playError.value = '无法播放音频，请稍后重试'
   }
 })
 
@@ -99,9 +114,10 @@ onBeforeUnmount(() => {
   <div class="music-layout">
     <audio
       ref="audioRef"
-      :src="currentSong?.audioUrl"
+      :src="resolveMediaUrl(currentSong?.audioUrl)"
       preload="metadata"
       @ended="onEnded"
+      @error="onAudioError"
       @pause="isPlaying = false"
       @play="isPlaying = true"
     />

@@ -16,28 +16,67 @@ const filterOperator = ref('')
 const filterStartDate = ref('')
 const filterEndDate = ref('')
 
-const actionOptions = [
-  { value: '', label: '全部操作' },
-  { value: 'ban_user', label: '封禁用户' },
-  { value: 'unban_user', label: '解封用户' },
-  { value: 'promote_admin', label: '设为协管员' },
-  { value: 'demote_admin', label: '取消协管员' },
-  { value: 'delete_message', label: '删除留言' },
-  { value: 'create_streamer_reply', label: '公开回复留言' },
-  { value: 'create_private_reply', label: '私密回复留言' },
-  { value: 'resolve_report', label: '办结举报' },
-  { value: 'delete_violation_message', label: '删除违规留言' },
-  { value: 'update_streamer_info', label: '更新博主资料' },
-  { value: 'create_graph_character', label: '新增图谱人物' },
-  { value: 'update_graph_character', label: '更新图谱人物' },
-  { value: 'delete_graph_character', label: '删除图谱人物' },
-  { value: 'create_graph_relation', label: '新增图谱关系' },
-  { value: 'update_graph_relation', label: '更新图谱关系' },
-  { value: 'delete_graph_relation', label: '删除图谱关系' },
+const actionGroups = [
+  {
+    label: '用户',
+    items: [
+      { value: 'ban_user', label: '封禁用户' },
+      { value: 'unban_user', label: '解封用户' },
+      { value: 'promote_admin', label: '设为协管员' },
+      { value: 'demote_admin', label: '取消协管员' },
+    ],
+  },
+  {
+    label: '留言',
+    items: [
+      { value: 'delete_message', label: '删除留言' },
+      { value: 'create_streamer_reply', label: '公开回复留言' },
+      { value: 'create_private_reply', label: '私密回复留言' },
+      { value: 'create_public_private_reply', label: '公开发布私密回复' },
+      { value: 'resolve_report', label: '办结举报' },
+      { value: 'delete_violation_message', label: '删除违规留言' },
+    ],
+  },
+  {
+    label: '内容',
+    items: [
+      { value: 'update_streamer_info', label: '更新博主资料' },
+      { value: 'create_banner', label: '新增 Banner' },
+      { value: 'update_banner', label: '更新 Banner' },
+      { value: 'delete_banner', label: '删除 Banner' },
+      { value: 'create_song', label: '新增歌曲' },
+      { value: 'update_song', label: '更新歌曲' },
+      { value: 'delete_song', label: '删除歌曲' },
+      { value: 'create_activity', label: '新增活动' },
+      { value: 'update_activity', label: '更新活动' },
+      { value: 'delete_activity', label: '删除活动' },
+      { value: 'create_award', label: '新增荣誉' },
+      { value: 'update_award', label: '更新荣誉' },
+      { value: 'delete_award', label: '删除荣誉' },
+      { value: 'create_gallery_image', label: '新增图集' },
+      { value: 'update_gallery_image', label: '更新图集' },
+      { value: 'delete_gallery_image', label: '删除图集' },
+    ],
+  },
+  {
+    label: '图谱与词库',
+    items: [
+      { value: 'create_graph_character', label: '新增图谱人物' },
+      { value: 'update_graph_character', label: '更新图谱人物' },
+      { value: 'delete_graph_character', label: '删除图谱人物' },
+      { value: 'create_graph_relation', label: '新增图谱关系' },
+      { value: 'update_graph_relation', label: '更新图谱关系' },
+      { value: 'delete_graph_relation', label: '删除图谱关系' },
+      { value: 'create_avatar', label: '新增预设头像' },
+      { value: 'delete_avatar', label: '删除预设头像' },
+      { value: 'create_sensitive_word', label: '新增敏感词' },
+      { value: 'delete_sensitive_word', label: '删除敏感词' },
+    ],
+  },
 ]
 
 const actionLabels: Record<string, string> = Object.fromEntries(
-  actionOptions.filter((item) => item.value).map((item) => [item.value, item.label]),
+  actionGroups.flatMap((group) => group.items).map((item) => [item.value, item.label]),
 )
 
 function actionLabel(action: string) {
@@ -109,7 +148,10 @@ onMounted(load)
       <label>
         操作类型
         <select v-model="filterAction">
-          <option v-for="opt in actionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          <option value="">全部操作</option>
+          <optgroup v-for="group in actionGroups" :key="group.label" :label="group.label">
+            <option v-for="opt in group.items" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </optgroup>
         </select>
       </label>
       <label>

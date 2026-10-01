@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as messagesApi from '@/api/messages'
 import { useAuthStore } from '@/stores/auth'
 import AppModal from '@/components/AppModal.vue'
@@ -31,7 +31,24 @@ const PAGE_SIZE = 20
 const REPLY_PAGE_SIZE = 10
 const POLL_MS = 3000
 const SEND_COOLDOWN_MS = 20_000
+const LIKE_DEBOUNCE_MS = 300
+const LIKE_THROTTLE_MS = 1000
 const inflightLikeIds = new Set<string>()
+/** 点赞按钮禁用（防抖/请求中/节流），用新 Set 赋值以触发模板更新 */
+const likeUiLocked = ref(new Set<string>())
+const likeDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const likeThrottleUntil = new Map<string, number>()
+
+function isLikeUiLocked(msg: MessageItem) {
+  return likeUiLocked.value.has(String(msg.id))
+}
+
+function setLikeUiLocked(id: string, locked: boolean) {
+  const next = new Set(likeUiLocked.value)
+  if (locked) next.add(id)
+  else next.delete(id)
+  likeUiLocked.value = next
+}
 
 const canUsePrivateTab = computed(() => auth.role === 'fan')
 
@@ -272,10 +289,11 @@ async function send() {
   }
 }
 
-async function toggleLike(msg: MessageItem) {
+async function runToggleLike(msg: MessageItem) {
+  const id = String(msg.id)
   const prevLiked = isLiked(msg)
   const prevCount = msg.likeCount
-  inflightLikeIds.add(String(msg.id))
+  inflightLikeIds.add(id)
 
   if (prevLiked) {
     msg.isLiked = false
@@ -299,8 +317,30 @@ async function toggleLike(msg: MessageItem) {
     msg.likeCount = prevCount
     error.value = e instanceof Error ? e.message : '操作失败'
   } finally {
-    inflightLikeIds.delete(String(msg.id))
+    inflightLikeIds.delete(id)
+    setLikeUiLocked(id, false)
   }
+}
+
+/** 点击立即禁用；300ms 防抖合并连点；成功发起后 1s 内再点无效 */
+function toggleLike(msg: MessageItem) {
+  const id = String(msg.id)
+  if (inflightLikeIds.has(id)) return
+  if (Date.now() < (likeThrottleUntil.get(id) ?? 0)) return
+
+  setLikeUiLocked(id, true)
+
+  const pending = likeDebounceTimers.get(id)
+  if (pending) clearTimeout(pending)
+
+  likeDebounceTimers.set(
+    id,
+    setTimeout(() => {
+      likeDebounceTimers.delete(id)
+      likeThrottleUntil.set(id, Date.now() + LIKE_THROTTLE_MS)
+      void runToggleLike(msg)
+    }, LIKE_DEBOUNCE_MS),
+  )
 }
 
 function openReport(msg: MessageItem) {
@@ -341,6 +381,10 @@ watch(canUsePrivateTab, (allowed) => {
 })
 
 onMounted(load)
+onBeforeUnmount(() => {
+  for (const timer of likeDebounceTimers.values()) clearTimeout(timer)
+  likeDebounceTimers.clear()
+})
 usePagePoll(silentRefresh, POLL_MS)
 </script>
 
@@ -413,7 +457,13 @@ usePagePoll(silentRefresh, POLL_MS)
             </div>
             <div class="chat-bubble-text">{{ msg.content }}</div>
             <div class="chat-bubble-actions">
-              <button type="button" class="chat-action" :class="{ liked: isLiked(msg) }" @click="toggleLike(msg)">
+              <button
+                type="button"
+                class="chat-action"
+                :class="{ liked: isLiked(msg) }"
+                :disabled="isLikeUiLocked(msg)"
+                @click="toggleLike(msg)"
+              >
                 {{ isLiked(msg) ? '❤️' : '🤍' }} {{ msg.likeCount }}
               </button>
               <button type="button" class="chat-action" @click="openReport(msg)">⚑ 举报</button>

@@ -106,7 +106,12 @@ const router = createRouter({
       ],
     },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior(to) {
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth', top: 80 }
+    }
+    return { top: 0 }
+  },
 })
 
 router.beforeEach(async (to) => {

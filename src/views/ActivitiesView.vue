@@ -50,13 +50,23 @@ const activityStats = computed(() => {
 
 
 
+type StatusFilter = 'all' | 'ongoing' | 'upcoming' | 'ended'
+const statusFilter = ref<StatusFilter>('all')
+
+const filteredActivities = computed(() => {
+  if (statusFilter.value === 'all') return activities.value
+  return activities.value.filter(
+    (act) => getActivityStatus(act.startTime, act.endTime).tone === statusFilter.value,
+  )
+})
+
 const groupedActivities = computed(() => {
 
   const groups = new Map<string, ActivityItem[]>()
 
 
 
-  for (const act of activities.value) {
+  for (const act of filteredActivities.value) {
 
     const date = new Date(act.startTime)
 
@@ -84,7 +94,10 @@ const groupedActivities = computed(() => {
 
 
 
-onMounted(async () => {
+async function loadActivities() {
+  loading.value = true
+  error.value = ''
+  loadWarning.value = ''
   const fallbackOpts = { allowFallback: true } as const
   try {
     const list = await publicApi.getActivities()
@@ -104,7 +117,9 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadActivities)
 
 </script>
 
@@ -138,39 +153,39 @@ onMounted(async () => {
 
 
 
-        <div v-if="activities.length" class="activity-stats" aria-label="活动统计">
+        <div v-if="activities.length" class="activity-stats" aria-label="活动筛选">
 
-          <div class="stat-chip">
+          <button type="button" class="stat-chip" :class="{ 'is-active': statusFilter === 'all' }" @click="statusFilter = 'all'">
 
             <span class="stat-value">{{ activityStats.total }}</span>
 
             <span class="stat-label">全部</span>
 
-          </div>
+          </button>
 
-          <div class="stat-chip stat-chip--ongoing">
+          <button type="button" class="stat-chip stat-chip--ongoing" :class="{ 'is-active': statusFilter === 'ongoing' }" @click="statusFilter = 'ongoing'">
 
             <span class="stat-value">{{ activityStats.ongoing }}</span>
 
             <span class="stat-label">进行中</span>
 
-          </div>
+          </button>
 
-          <div class="stat-chip stat-chip--upcoming">
+          <button type="button" class="stat-chip stat-chip--upcoming" :class="{ 'is-active': statusFilter === 'upcoming' }" @click="statusFilter = 'upcoming'">
 
             <span class="stat-value">{{ activityStats.upcoming }}</span>
 
             <span class="stat-label">即将开始</span>
 
-          </div>
+          </button>
 
-          <div class="stat-chip stat-chip--ended">
+          <button type="button" class="stat-chip stat-chip--ended" :class="{ 'is-active': statusFilter === 'ended' }" @click="statusFilter = 'ended'">
 
             <span class="stat-value">{{ activityStats.ended }}</span>
 
             <span class="stat-label">已结束</span>
 
-          </div>
+          </button>
 
         </div>
 
@@ -182,9 +197,14 @@ onMounted(async () => {
 
     <p v-if="loading" class="state">加载中...</p>
 
-    <p v-else-if="error" class="state error">{{ error }}</p>
+    <p v-else-if="error" class="state error">
+      {{ error }}
+      <button type="button" class="retry-btn" @click="loadActivities">重试</button>
+    </p>
 
     <p v-else-if="!activities.length" class="state">暂无活动</p>
+
+    <p v-else-if="!filteredActivities.length" class="state">没有符合筛选的活动</p>
 
 
 
@@ -364,6 +384,20 @@ onMounted(async () => {
 
   border: 1px solid var(--border-subtle);
 
+  font: inherit;
+
+  color: inherit;
+
+  cursor: pointer;
+
+}
+
+
+
+.stat-chip.is-active {
+
+  box-shadow: 0 0 0 2px var(--accent-primary);
+
 }
 
 
@@ -504,6 +538,18 @@ onMounted(async () => {
 
   color: var(--danger);
 
+}
+
+.retry-btn {
+  display: inline-block;
+  margin-left: 0.75rem;
+  border: 1px solid var(--border-subtle, #d8cfc4);
+  background: transparent;
+  color: var(--accent-primary, #8b3352);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
 }
 
 .load-warning {

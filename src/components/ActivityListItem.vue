@@ -1,8 +1,8 @@
 <script setup lang="ts">
 
 import type { ActivityItem } from '@/types/api'
-
 import { formatActivityRange, getActivityStatus } from '@/utils/activity'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 
 
@@ -78,7 +78,7 @@ function badgeClass(tone: string) {
 
     >
 
-      <img :src="activity.coverUrl" :alt="activity.title" />
+      <img :src="resolveMediaUrl(activity.coverUrl)" :alt="activity.title" />
 
     </div>
 

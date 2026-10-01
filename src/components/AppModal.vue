@@ -70,7 +70,8 @@ onUnmounted(() => {
 }
 
 .modal-mask--lightbox {
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.92);
   cursor: zoom-out;
+  padding: 0;
 }
 </style>

@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import * as streamerApi from '@/api/admin/streamer'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
+import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const loading = ref(false)
 const error = ref('')
@@ -87,7 +88,7 @@ onMounted(load)
       <div class="preview card" v-if="form.name || form.avatarUrl">
         <p class="preview-label muted">预览</p>
         <div class="preview-inner">
-          <img v-if="form.avatarUrl" :src="form.avatarUrl" alt="" class="avatar" />
+          <img v-if="form.avatarUrl" :src="resolveMediaUrl(form.avatarUrl)" alt="" class="avatar" />
           <div>
             <strong>{{ form.name || '博主名称' }}</strong>
             <p v-if="form.tags" class="tags">{{ form.tags.split(',').join(' · ') }}</p>

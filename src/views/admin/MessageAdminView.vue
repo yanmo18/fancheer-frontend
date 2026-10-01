@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import * as messageApi from '@/api/admin/message'
 import * as reportApi from '@/api/admin/report'
 import type { AdminMessageItem } from '@/api/admin/message'
@@ -9,6 +10,7 @@ import { formatDateTime } from '@/utils/datetime'
 import AppModal from '@/components/AppModal.vue'
 
 const auth = useAuthStore()
+const route = useRoute()
 
 type MainTab = 'public' | 'private' | 'reports'
 type ReportTab = 'pending' | 'resolved'
@@ -280,7 +282,20 @@ watch(reportTab, () => {
   }
 })
 
-onMounted(load)
+onMounted(() => {
+  const tab = String(route.query.tab || '')
+  if (tab === 'private' && !isStreamer.value) {
+    load()
+    return
+  }
+  if (tab === 'reports' || tab === 'private' || tab === 'public') {
+    if (tab !== mainTab.value) {
+      mainTab.value = tab as MainTab
+      return
+    }
+  }
+  load()
+})
 </script>
 
 <template>
