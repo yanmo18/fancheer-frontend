@@ -384,3 +384,62 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 暗色模式：提高按钮 / 卡片 / 日历对比度 */
+[data-theme='dark'] {
+  --accent-primary: #c47a96;
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-medium: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='dark'] .btn-ghost,
+[data-theme='dark'] .theme-toggle,
+[data-theme='dark'] .user-btn-ghost,
+[data-theme='dark'] .month-btn {
+  background: #3a3a46;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f3eee8;
+}
+
+[data-theme='dark'] .btn-primary,
+[data-theme='dark'] .user-btn-primary {
+  color: #fff;
+}
+
+[data-theme='dark'] .activity-item {
+  background: var(--bg-card);
+  border-color: var(--border-medium);
+}
+
+[data-theme='dark'] .activity-title {
+  color: #f6f1ec;
+}
+
+[data-theme='dark'] .activity-desc {
+  color: #c8bfb6;
+}
+
+[data-theme='dark'] .day-cell.missed {
+  opacity: 0.85;
+  color: #b7aea6;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='dark'] .day-cell:not(.empty):not(.checked):not(.missed) {
+  color: #ddd6d0;
+}
+
+[data-theme='dark'] .checkin-btn.success,
+[data-theme='dark'] .checkin-btn.success:disabled {
+  background: rgba(125, 159, 122, 0.22);
+  color: #c5e0c2;
+  border-color: #9bbb97;
+}
+
+[data-theme='dark'] .nav-link {
+  color: #d8d0c8;
+}
+
+[data-theme='dark'] .nav-link.active {
+  color: #f6f1ec;
+}
