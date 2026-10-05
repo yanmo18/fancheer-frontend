@@ -549,7 +549,12 @@ usePagePoll(silentRefresh, POLL_MS)
         </button>
       </div>
       <div class="chat-input-footer">
-        <span class="chat-char-count">{{ content.length }}/500</span>
+        <span
+          v-if="content.length >= 400"
+          class="chat-char-count"
+          :class="{ warn: content.length >= 480 }"
+        >{{ content.length }}/500</span>
+        <span v-else class="chat-char-count chat-char-count--idle" />
         <span class="chat-cooldown-text">{{
           cooldown.left > 0
             ? `发送冷却 ${cooldown.left} 秒`

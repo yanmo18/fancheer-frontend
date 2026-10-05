@@ -1078,7 +1078,9 @@ input, textarea, select { font-family: inherit; outline: none; }
 }
 .chat-send-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-glow); }
 .chat-input-footer { display: flex; justify-content: space-between; margin-top: 8px; }
-.chat-char-count { font-size: 11px; color: var(--text-muted); }
+.chat-char-count { font-size: 11px; color: var(--text-muted); min-width: 3.5rem; }
+.chat-char-count.warn { color: var(--warning, #c4a35a); }
+.chat-char-count--idle { visibility: hidden; }
 .chat-cooldown-text { font-size: 11px; color: var(--text-muted); }
 
 /* ============================================================
