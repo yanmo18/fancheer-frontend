@@ -51,6 +51,8 @@ const graphData = ref<GraphData | null>(null)
 const galleryTab = ref<'anime' | 'real'>('anime')
 const previewIndex = ref<number | null>(null)
 const galleryScrollRef = ref<HTMLElement | null>(null)
+const galleryMoreSentinelRef = ref<HTMLElement | null>(null)
+let galleryMoreObserver: IntersectionObserver | null = null
 
 const HOME_ACTIVITY_PREVIEW = 4
 
@@ -132,7 +134,11 @@ watch(galleryPreviewOpen, (open) => {
   else document.removeEventListener('keydown', onLightboxKeydown)
 })
 
-onUnmounted(() => document.removeEventListener('keydown', onLightboxKeydown))
+onUnmounted(() => {
+  document.removeEventListener('keydown', onLightboxKeydown)
+  galleryMoreObserver?.disconnect()
+  galleryMoreObserver = null
+})
 
 function scrollGallery(dir: number) {
   galleryAutoScroll.pauseFromUser()
@@ -170,12 +176,30 @@ watch(galleryTab, async () => {
   await nextTick()
   galleryAutoScroll.resetScroll()
   galleryAutoScroll.start()
+  bindGalleryMoreObserver()
 })
 
 watch(galleryList, async () => {
   await nextTick()
   galleryAutoScroll.start()
+  bindGalleryMoreObserver()
 })
+
+function bindGalleryMoreObserver() {
+  galleryMoreObserver?.disconnect()
+  const sentinel = galleryMoreSentinelRef.value
+  const root = galleryScrollRef.value
+  if (!sentinel || !root || !galleryHasMore.value) return
+  galleryMoreObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void loadMoreGallery()
+      }
+    },
+    { root, rootMargin: '80px', threshold: 0.01 },
+  )
+  galleryMoreObserver.observe(sentinel)
+}
 
 function formatAwardDate(iso?: string) {
   if (!iso) return ''
@@ -473,11 +497,17 @@ onMounted(loadHome)
               @keydown.enter.prevent="openPreviewAt(index)"
               @keydown.space.prevent="openPreviewAt(index)"
             >
-              <img :src="resolveMediaUrl(img.imageUrl)" :alt="img.title || '图集图片'" />
+              <img
+                :src="resolveMediaUrl(img.imageUrl)"
+                :alt="img.title || '图集图片'"
+                loading="lazy"
+                decoding="async"
+              />
               <div v-if="img.title" class="gallery-scroll-overlay">
                 <span class="gallery-scroll-text">{{ img.title }}</span>
               </div>
             </div>
+            <div ref="galleryMoreSentinelRef" class="gallery-more-sentinel" aria-hidden="true" />
           </div>
           <button type="button" class="gallery-arrow gallery-arrow-right" aria-label="向右滚动" @click.stop="scrollGallery(1)">›</button>
         </div>
@@ -732,6 +762,12 @@ onMounted(loadHome)
   display: flex;
   justify-content: center;
   margin-top: 0.85rem;
+}
+
+.gallery-more-sentinel {
+  flex: 0 0 8px;
+  width: 8px;
+  align-self: stretch;
 }
 
 .gallery-scroll-item:focus-visible {
