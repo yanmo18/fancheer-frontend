@@ -193,7 +193,7 @@ onMounted(() => {
         </div>
         <div class="checkin-stat" :class="{ bump: bumpStreak }">
           <strong>{{ currentStreak }}</strong>
-          <span>已连续打卡</span>
+          <span>已连续打卡 {{ currentStreak }} 天</span>
         </div>
       </div>
 
