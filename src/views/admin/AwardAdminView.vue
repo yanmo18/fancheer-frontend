@@ -4,6 +4,7 @@ import * as awardApi from '@/api/admin/award'
 import type { AdminAwardItem } from '@/api/admin/award'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { formatDate, toDateInputValue } from '@/utils/datetime'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
@@ -100,7 +101,7 @@ async function submit() {
 }
 
 async function remove(id: string) {
-  if (!confirm('确定删除这条荣誉记录？')) return
+  if (!(await confirmAction('确定删除这条荣誉记录？'))) return
   loading.value = true
   error.value = ''
   try {

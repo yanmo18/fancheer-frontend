@@ -4,6 +4,7 @@ import * as avatarApi from '@/api/admin/avatar'
 import type { AdminAvatarItem } from '@/api/admin/avatar'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { formatDateTime } from '@/utils/datetime'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
@@ -63,7 +64,7 @@ async function submit() {
 }
 
 async function remove(item: AdminAvatarItem) {
-  if (!confirm('确定删除这个预设头像？若有用户正在使用将无法删除。')) return
+  if (!(await confirmAction('确定删除这个预设头像？若有用户正在使用将无法删除。'))) return
   loading.value = true
   error.value = ''
   message.value = ''

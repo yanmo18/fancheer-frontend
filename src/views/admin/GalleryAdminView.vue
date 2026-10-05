@@ -4,6 +4,7 @@ import * as galleryApi from '@/api/admin/gallery'
 import type { AdminGalleryItem, GalleryCategory } from '@/api/admin/gallery'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const categoryLabels: Record<GalleryCategory, string> = {
@@ -106,7 +107,7 @@ async function submit() {
 }
 
 async function remove(id: string) {
-  if (!confirm('确定删除这张图片？')) return
+  if (!(await confirmAction('确定删除这张图片？'))) return
   loading.value = true
   error.value = ''
   try {

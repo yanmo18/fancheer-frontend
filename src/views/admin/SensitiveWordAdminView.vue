@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import * as sensitiveWordApi from '@/api/admin/sensitiveWord'
 import type { AdminSensitiveWordItem } from '@/api/admin/sensitiveWord'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { formatDateTime } from '@/utils/datetime'
 
 const list = ref<AdminSensitiveWordItem[]>([])
@@ -61,7 +62,7 @@ async function submit() {
 }
 
 async function remove(item: AdminSensitiveWordItem) {
-  if (!confirm(`确定删除敏感词「${item.word}」？`)) return
+  if (!(await confirmAction(`确定删除敏感词「${item.word}」？`))) return
   loading.value = true
   error.value = ''
   message.value = ''

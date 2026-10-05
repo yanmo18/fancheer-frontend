@@ -4,6 +4,7 @@ import * as graphApi from '@/api/admin/graph'
 import type { AdminGraphCharacter, AdminGraphRelation } from '@/api/admin/graph'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const tab = ref<'characters' | 'relations'>('characters')
@@ -160,7 +161,7 @@ async function submitChar() {
 }
 
 async function removeChar(id: string) {
-  if (!confirm('删除人物将同时删除相关关系，确定继续？')) return
+  if (!(await confirmAction('删除人物将同时删除相关关系，确定继续？'))) return
   loading.value = true
   error.value = ''
   try {
@@ -233,7 +234,7 @@ async function submitRel() {
 }
 
 async function removeRel(id: string) {
-  if (!confirm('确定删除这条关系？')) return
+  if (!(await confirmAction('确定删除这条关系？'))) return
   loading.value = true
   error.value = ''
   try {

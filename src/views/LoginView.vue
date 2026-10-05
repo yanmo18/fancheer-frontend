@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { safeRedirect } from '@/utils/safeRedirect'
@@ -16,6 +16,7 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 const notice = ref('')
+const banned = computed(() => error.value.includes('封禁'))
 
 onMounted(() => {
   if (String(route.query.registered) === '1') {
@@ -59,7 +60,10 @@ async function submit() {
       />
 
       <p v-if="notice" class="success">{{ notice }}</p>
-      <p v-if="error" class="error">{{ error }}</p>
+      <div v-if="error" class="error" :class="{ 'auth-banned': banned }">
+        <p>{{ error }}</p>
+        <p v-if="banned" class="auth-banned-hint">如需申诉，请联系站点管理员说明情况。</p>
+      </div>
       <button type="submit" class="auth-submit" :disabled="loading || cooldown.left > 0">
         {{ loading ? '登录中...' : cooldown.left > 0 ? `请 ${cooldown.left} 秒后再试` : '登录' }}
       </button>
@@ -70,3 +74,22 @@ async function submit() {
     </form>
   </div>
 </template>
+
+<style scoped>
+.auth-banned {
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(180, 70, 70, 0.12);
+  border: 1px solid rgba(180, 70, 70, 0.28);
+}
+
+.auth-banned p {
+  margin: 0;
+}
+
+.auth-banned-hint {
+  margin-top: 0.4rem !important;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+</style>

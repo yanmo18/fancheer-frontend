@@ -4,6 +4,7 @@ import * as activityApi from '@/api/admin/activity'
 import type { AdminActivityItem } from '@/api/admin/activity'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { formatDateTime, fromDatetimeLocalValue, toDatetimeLocalValue } from '@/utils/datetime'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
@@ -108,7 +109,7 @@ async function submit() {
 }
 
 async function remove(id: string) {
-  if (!confirm('确定删除这条活动？')) return
+  if (!(await confirmAction('确定删除这条活动？'))) return
   loading.value = true
   error.value = ''
   try {

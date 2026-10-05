@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import type { UserRole } from '@/types/api'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const auth = useAuthStore()
@@ -75,7 +76,7 @@ function closeBanForm() {
 async function toggleBan(item: AdminUserItem) {
   const isBanned = item.status === 'banned'
   if (isBanned) {
-    if (!confirm(`确定解封用户「${item.nickname}」？`)) return
+    if (!(await confirmAction(`确定解封用户「${item.nickname}」？`))) return
     loading.value = true
     error.value = ''
     message.value = ''
@@ -118,7 +119,7 @@ async function submitBan() {
 async function toggleAdmin(item: AdminUserItem) {
   const makeAdmin = item.role === 'fan'
   const action = makeAdmin ? '设为协管员' : '取消协管员'
-  if (!confirm(`确定${action}「${item.nickname}」？`)) return
+  if (!(await confirmAction(`确定${action}「${item.nickname}」？`))) return
 
   loading.value = true
   error.value = ''

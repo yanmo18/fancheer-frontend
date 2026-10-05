@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import ConfirmHost from '@/components/ConfirmHost.vue'
+</script>
+
 <template>
   <RouterView v-slot="{ Component }">
     <Suspense v-if="Component">
@@ -9,6 +13,7 @@
       </template>
     </Suspense>
   </RouterView>
+  <ConfirmHost />
 </template>
 
 <style scoped>

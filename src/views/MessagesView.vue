@@ -36,6 +36,7 @@ const LIKE_THROTTLE_MS = 1000
 const inflightLikeIds = new Set<string>()
 /** 点赞按钮禁用（防抖/请求中/节流），用新 Set 赋值以触发模板更新 */
 const likeUiLocked = ref(new Set<string>())
+const poppingLikeIds = ref(new Set<string>())
 const likeDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const likeThrottleUntil = new Map<string, number>()
 
@@ -310,6 +311,12 @@ async function runToggleLike(msg: MessageItem) {
       await messagesApi.unlikeMessage(msg.id)
     } else {
       await messagesApi.likeMessage(msg.id)
+      poppingLikeIds.value = new Set(poppingLikeIds.value).add(id)
+      window.setTimeout(() => {
+        const next = new Set(poppingLikeIds.value)
+        next.delete(id)
+        poppingLikeIds.value = next
+      }, 420)
     }
   } catch (e) {
     msg.isLiked = prevLiked
@@ -460,7 +467,7 @@ usePagePoll(silentRefresh, POLL_MS)
               <button
                 type="button"
                 class="chat-action"
-                :class="{ liked: isLiked(msg) }"
+                :class="{ liked: isLiked(msg), popping: poppingLikeIds.has(String(msg.id)) }"
                 :disabled="isLikeUiLocked(msg)"
                 @click="toggleLike(msg)"
               >
@@ -471,7 +478,10 @@ usePagePoll(silentRefresh, POLL_MS)
           </div>
         </article>
 
-        <p v-if="!messages.length && !publicReplies.length" class="muted chat-empty">还没有留言，来抢沙发吧</p>
+        <p v-if="!messages.length && !publicReplies.length" class="muted chat-empty">
+          还没有公开留言
+          <span class="chat-empty-hint">写下第一条，给博主打个招呼吧</span>
+        </p>
         <div v-if="messages.length && hasMoreMessages" class="chat-load-more">
           <button type="button" class="btn btn-ghost btn-sm" :disabled="loadingMore" @click="loadMoreMessages">
             {{ loadingMore ? '加载中...' : '加载更多留言' }}
@@ -509,7 +519,8 @@ usePagePoll(silentRefresh, POLL_MS)
         </article>
 
         <p v-if="!sentPrivateMessages.length && !privateReplies.length" class="muted chat-empty">
-          暂无私密留言记录
+          还没有私密留言
+          <span class="chat-empty-hint">只有博主能看到，适合说悄悄话</span>
         </p>
         <div v-if="hasMoreSentPrivate" class="chat-load-more">
           <button type="button" class="btn btn-ghost btn-sm" :disabled="loadingMoreSent" @click="loadMoreSentPrivate">
@@ -580,6 +591,13 @@ usePagePoll(silentRefresh, POLL_MS)
 .chat-empty {
   text-align: center;
   padding: 2rem 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.chat-empty-hint {
+  display: block;
+  font-size: 0.8125rem;
 }
 
 .chat-load-more {

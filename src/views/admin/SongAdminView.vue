@@ -5,6 +5,7 @@ import type { AdminSongItem } from '@/api/admin/song'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AudioUpload from '@/components/admin/AudioUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
 const list = ref<AdminSongItem[]>([])
@@ -104,7 +105,7 @@ async function submit() {
 }
 
 async function remove(id: string) {
-  if (!confirm('确定删除这首歌曲？')) return
+  if (!(await confirmAction('确定删除这首歌曲？'))) return
   loading.value = true
   error.value = ''
   try {

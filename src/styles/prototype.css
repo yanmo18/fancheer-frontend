@@ -1,4 +1,4 @@
-﻿/* Fancheer UI Prototype v3 - Consolidated Styles */
+/* Fancheer UI Prototype v3 - Consolidated Styles */
 
 /* Extracted from Fancheer-UI-Prototype-v3.html */
 
@@ -21,7 +21,7 @@
 
   --text-primary: #ece8e4;
   --text-secondary: #a89e96;
-  --text-muted: #685e56;
+  --text-muted: #8a8178;
   --text-inverse: #1a1a22;
 
   --accent-primary: #8B3352;
@@ -195,10 +195,10 @@ input, textarea, select { font-family: inherit; outline: none; }
 .theme-toggle {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 14px; border-radius: 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
   cursor: pointer; transition: all 0.3s ease;
-  font-size: 12px; color: var(--text-secondary);
+  font-size: 12px; color: var(--text-primary);
 }
 .theme-toggle:hover { border-color: var(--border-accent); }
 .theme-toggle-icon { font-size: 14px; transition: transform 0.3s ease; }
@@ -883,15 +883,34 @@ input, textarea, select { font-family: inherit; outline: none; }
   color: var(--accent-primary); line-height: 1.2;
 }
 .activity-body { flex: 1; }
-.activity-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.activity-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; color: var(--text-primary); }
 .activity-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.activity-range { color: var(--text-muted); }
 .activity-badge {
   padding: 4px 12px; border-radius: 10px;
   font-size: 11px; font-weight: 500; flex-shrink: 0;
+  border: 1px solid transparent;
 }
-.activity-badge.upcoming { background: rgba(125,159,122,0.12); color: var(--success); }
-.activity-badge.ongoing { background: rgba(196,163,90,0.12); color: var(--warning); }
-.activity-badge.ended { background: var(--bg-elevated); color: var(--text-muted); }
+.activity-badge.upcoming { background: rgba(125,159,122,0.16); color: var(--success); border-color: rgba(125,159,122,0.28); }
+.activity-badge.ongoing { background: rgba(196,163,90,0.16); color: var(--warning); border-color: rgba(196,163,90,0.28); }
+.activity-badge.ended {
+  background: color-mix(in srgb, var(--text-muted) 14%, var(--bg-elevated));
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+}
+[data-theme='dark'] .activity-badge.ended {
+  background: rgba(255, 255, 255, 0.14);
+  color: #f0ebe6;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+[data-theme='dark'] .activity-badge.upcoming {
+  background: rgba(125, 159, 122, 0.2);
+  color: #a8c4a4;
+}
+[data-theme='dark'] .activity-badge.ongoing {
+  background: rgba(196, 163, 90, 0.22);
+  color: #e0c98a;
+}
 
 .activity-fade-overlay {
   position: absolute;
@@ -987,6 +1006,15 @@ input, textarea, select { font-family: inherit; outline: none; }
 }
 .chat-action:hover { color: var(--accent-primary); background: var(--accent-glow); }
 .chat-action.liked { color: var(--accent-primary); }
+.chat-action.popping {
+  animation: like-pop 0.42s ease;
+}
+@keyframes like-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); }
+  70% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
 
 .chat-private-label {
   display: inline-flex; align-items: center; gap: 5px;
@@ -1132,9 +1160,9 @@ input, textarea, select { font-family: inherit; outline: none; }
 .user-btn-primary { background: var(--accent-gradient); color: white; }
 .user-btn-primary:hover { transform: translateY(-1px); }
 .user-btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
 }
 .user-btn-ghost:hover { border-color: var(--border-accent); color: var(--accent-primary); }
 
@@ -1504,9 +1532,9 @@ input, textarea, select { font-family: inherit; outline: none; }
   box-shadow: none;
 }
 .btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
 }
 .btn-ghost:hover {
   border-color: var(--border-accent);

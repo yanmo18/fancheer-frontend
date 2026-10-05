@@ -194,9 +194,12 @@ async function savePassword() {
         <div class="user-row">
           <span class="user-row-label">打卡</span>
           <span class="user-row-value">
-            <template v-if="checkinTotal != null">
+            <template v-if="checkinTotal === 0">
+              还没有打卡记录
+            </template>
+            <template v-else-if="checkinTotal != null">
               累计 {{ checkinTotal }} 天
-              <span class="muted"> · 连续 {{ checkinStreak ?? 0 }} 天</span>
+              <span class="muted"> · 已连续打卡 {{ checkinStreak ?? 0 }} 天</span>
               <span v-if="checkedToday" class="muted"> · 今日已打</span>
             </template>
             <template v-else>—</template>

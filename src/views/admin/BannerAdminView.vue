@@ -4,6 +4,7 @@ import * as bannerApi from '@/api/admin/banner'
 import type { AdminBannerItem } from '@/api/admin/banner'
 import ImageUpload from '@/components/admin/ImageUpload.vue'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 import { MAX_HOME_BANNERS } from '@/constants/banner'
 import { resolveMediaUrl } from '@/utils/mediaUrl'
 
@@ -106,7 +107,7 @@ async function submit() {
 }
 
 async function remove(id: string) {
-  if (!confirm('确定删除这条 Banner？')) return
+  if (!(await confirmAction('确定删除这条 Banner？'))) return
   loading.value = true
   error.value = ''
   try {

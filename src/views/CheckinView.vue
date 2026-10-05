@@ -193,7 +193,7 @@ onMounted(() => {
         </div>
         <div class="checkin-stat" :class="{ bump: bumpStreak }">
           <strong>{{ currentStreak }}</strong>
-          <span>连续天数</span>
+          <span>已连续打卡</span>
         </div>
       </div>
 
@@ -215,6 +215,9 @@ onMounted(() => {
         {{ message }}
       </p>
       <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="!loading && totalDays === 0" class="muted checkin-empty">
+        还没有打卡记录，点上方按钮开始连续打卡吧
+      </p>
     </div>
 
     <div class="user-card user-card-full calendar-card">
@@ -272,6 +275,11 @@ onMounted(() => {
   margin: -0.5rem 0 1rem;
 }
 
+.checkin-empty {
+  margin: 0.75rem 0 0;
+  text-align: center;
+}
+
 .checkin-stats {
   display: flex;
   gap: 1rem;
@@ -317,10 +325,9 @@ onMounted(() => {
   min-width: 7.5rem;
 }
 
-/* 已打卡：浅绿底 + 绿字/描边，避免实心绿盖住文字 */
 .checkin-btn.success,
 .checkin-btn.success:disabled {
-  background: color-mix(in srgb, var(--success, #7d9f7a) 16%, var(--bg-card, #fff));
+  background: color-mix(in srgb, var(--success, #7d9f7a) 18%, var(--bg-card, #fff));
   color: var(--success, #5f7f5c);
   border: 1.5px solid var(--success, #7d9f7a);
   opacity: 1;
@@ -444,10 +451,10 @@ onMounted(() => {
 /* 今天未打卡：只保留描边，不填充变色 */
 .day-cell.today:not(.checked) {
   background: var(--bg-secondary);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-weight: 500;
   opacity: 1;
-  box-shadow: inset 0 0 0 2px var(--accent-primary, #8b3352);
+  box-shadow: inset 0 0 0 2px var(--gold, var(--accent-primary));
 }
 
 /* 今天已打卡：保留描边 + 明显变绿 */
@@ -455,7 +462,7 @@ onMounted(() => {
   background: var(--success, #7d9f7a);
   color: #fff;
   font-weight: 700;
-  box-shadow: inset 0 0 0 2px var(--accent-primary, #8b3352);
+  box-shadow: inset 0 0 0 2px var(--gold, var(--accent-primary));
 }
 
 .day-cell.celebrate {
@@ -509,7 +516,7 @@ onMounted(() => {
 
 .dot.today {
   background: var(--bg-card);
-  box-shadow: inset 0 0 0 2px var(--accent-primary);
+  box-shadow: inset 0 0 0 2px var(--gold, var(--accent-primary));
 }
 
 .dot.future {

@@ -8,6 +8,7 @@ import type { AdminReportDetail, AdminReportItem } from '@/api/admin/report'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import AppModal from '@/components/AppModal.vue'
+import { confirmAction } from '@/composables/useConfirm'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -176,7 +177,7 @@ async function submitReply() {
 }
 
 async function removeMessage(id: string) {
-  if (!confirm('确定删除这条留言？')) return
+  if (!(await confirmAction('确定删除这条留言？'))) return
   loading.value = true
   error.value = ''
   message.value = ''
@@ -232,7 +233,7 @@ async function submitResolve() {
 }
 
 async function deleteViolation(id: string) {
-  if (!confirm('确定删除被举报的违规留言？此操作不可撤销。')) return
+  if (!(await confirmAction('确定删除被举报的违规留言？此操作不可撤销。'))) return
   loading.value = true
   error.value = ''
   message.value = ''
