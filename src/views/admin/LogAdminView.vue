@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import * as logApi from '@/api/admin/log'
 import type { AdminLogItem } from '@/api/admin/log'
 import { formatDateTime } from '@/utils/datetime'
@@ -77,6 +77,15 @@ const actionGroups = [
 
 const actionLabels: Record<string, string> = Object.fromEntries(
   actionGroups.flatMap((group) => group.items).map((item) => [item.value, item.label]),
+)
+
+const hasFilters = computed(
+  () =>
+    Boolean(filterAction.value) ||
+    Boolean(filterKeyword.value.trim()) ||
+    Boolean(filterOperator.value.trim()) ||
+    Boolean(filterStartDate.value) ||
+    Boolean(filterEndDate.value),
 )
 
 function actionLabel(action: string) {
@@ -200,7 +209,7 @@ onMounted(load)
             <td>{{ formatDateTime(item.createdAt) }}</td>
           </tr>
           <tr v-if="!list.length">
-            <td colspan="5" class="muted center">暂无日志</td>
+            <td colspan="5" class="muted center">{{ hasFilters ? '没有符合筛选的日志' : '暂无操作日志' }}</td>
           </tr>
         </tbody>
       </table>
