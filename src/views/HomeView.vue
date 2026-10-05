@@ -27,6 +27,7 @@ import type {
   BannerItem,
   GalleryItem,
   GraphData,
+  PaginationMeta,
   SongItem,
   StreamerInfo,
 } from '@/types/api'
@@ -43,6 +44,9 @@ const songs = ref<SongItem[]>([])
 const activities = ref<ActivityItem[]>([])
 const galleryAnime = ref<GalleryItem[]>([])
 const galleryReal = ref<GalleryItem[]>([])
+const galleryAnimeMeta = ref<PaginationMeta | null>(null)
+const galleryRealMeta = ref<PaginationMeta | null>(null)
+const galleryLoadingMore = ref(false)
 const graphData = ref<GraphData | null>(null)
 const galleryTab = ref<'anime' | 'real'>('anime')
 const previewIndex = ref<number | null>(null)
@@ -55,6 +59,12 @@ const galleryList = computed(() =>
 )
 
 const galleryItemCount = computed(() => galleryList.value.length)
+
+const galleryHasMore = computed(() => {
+  const meta = galleryTab.value === 'anime' ? galleryAnimeMeta.value : galleryRealMeta.value
+  if (!meta) return false
+  return meta.page < meta.totalPages
+})
 
 const previewImage = computed(() => {
   if (previewIndex.value === null) return null
@@ -129,6 +139,33 @@ function scrollGallery(dir: number) {
   galleryScrollRef.value?.scrollBy({ left: dir * 480, behavior: 'smooth' })
 }
 
+async function loadMoreGallery() {
+  if (!galleryHasMore.value || galleryLoadingMore.value) return
+  const isAnime = galleryTab.value === 'anime'
+  const meta = isAnime ? galleryAnimeMeta.value : galleryRealMeta.value
+  if (!meta) return
+
+  galleryLoadingMore.value = true
+  try {
+    const next = await publicApi.getGallery(isAnime ? 'anime' : 'real', meta.page + 1, 20)
+    const incoming = withDemoGallery(next.list, isAnime ? 'anime' : 'real', { allowFallback: false })
+    const current = isAnime ? galleryAnime.value : galleryReal.value
+    const seen = new Set(current.map((item) => item.id))
+    const merged = [...current, ...incoming.filter((item) => !seen.has(item.id))]
+    if (isAnime) {
+      galleryAnime.value = merged
+      galleryAnimeMeta.value = next.pagination
+    } else {
+      galleryReal.value = merged
+      galleryRealMeta.value = next.pagination
+    }
+  } catch {
+    /* keep already loaded pages */
+  } finally {
+    galleryLoadingMore.value = false
+  }
+}
+
 watch(galleryTab, async () => {
   await nextTick()
   galleryAutoScroll.resetScroll()
@@ -154,15 +191,17 @@ async function loadHome() {
   galleryAutoScroll.stop()
 
   const labels = ['博主资料', 'Banner', '荣誉', '音乐', '活动', '二次元图集', '真人图集', '关系图谱']
-  const fallbackOpts = { allowFallback: true } as const
+  /** 接口成功一律用数据库；只有整段请求失败才考虑演示兜底（开发默认已关闭） */
+  const dbOnly = { allowFallback: false } as const
+  const failFallback = { allowFallback: true } as const
   const results = await Promise.allSettled([
     publicApi.getStreamerInfo(),
     publicApi.getBanners(),
     publicApi.getAwards(),
     publicApi.getSongs(),
     publicApi.getActivities(),
-    publicApi.getGallery('anime'),
-    publicApi.getGallery('real'),
+    publicApi.getGallery('anime', 1, 20),
+    publicApi.getGallery('real', 1, 20),
     publicApi.getGraph(),
   ])
 
@@ -177,7 +216,7 @@ async function loadHome() {
 
   if (results[0].status === 'fulfilled') {
     const info = results[0].value
-    streamer.value = withDemoStreamer(info, fallbackOpts)
+    streamer.value = withDemoStreamer(info, dbOnly)
     if (!info?.name && streamer.value) demoSections.push(labels[0])
     if (info?.name) {
       setPageMeta({
@@ -187,73 +226,77 @@ async function loadHome() {
       })
     }
   } else {
-    streamer.value = withDemoStreamer(null, fallbackOpts)
+    streamer.value = withDemoStreamer(null, failFallback)
     if (streamer.value) demoSections.push(labels[0])
     failed.push(labels[0])
   }
 
   if (results[1].status === 'fulfilled') {
-    banners.value = withDemoBanners(results[1].value, fallbackOpts)
+    banners.value = withDemoBanners(results[1].value, dbOnly)
     trackDemo(labels[1], banners.value)
   } else {
-    banners.value = withDemoBanners([], fallbackOpts)
+    banners.value = withDemoBanners([], failFallback)
     trackDemo(labels[1], banners.value)
     failed.push(labels[1])
   }
 
   if (results[2].status === 'fulfilled') {
-    awards.value = withDemoAwards(results[2].value, fallbackOpts)
+    awards.value = withDemoAwards(results[2].value, dbOnly)
     trackDemo(labels[2], awards.value)
   } else {
-    awards.value = withDemoAwards([], fallbackOpts)
+    awards.value = withDemoAwards([], failFallback)
     trackDemo(labels[2], awards.value)
     failed.push(labels[2])
   }
 
   if (results[3].status === 'fulfilled') {
-    songs.value = withDemoSongs(results[3].value, fallbackOpts)
+    songs.value = withDemoSongs(results[3].value, dbOnly)
     trackDemo(labels[3], songs.value)
   } else {
-    songs.value = withDemoSongs([], fallbackOpts)
+    songs.value = withDemoSongs([], failFallback)
     trackDemo(labels[3], songs.value)
     failed.push(labels[3])
   }
 
   if (results[4].status === 'fulfilled') {
-    activities.value = withDemoActivities(results[4].value, fallbackOpts)
+    activities.value = withDemoActivities(results[4].value, dbOnly)
     trackDemo(labels[4], activities.value)
   } else {
-    activities.value = withDemoActivities([], fallbackOpts)
+    activities.value = withDemoActivities([], failFallback)
     trackDemo(labels[4], activities.value)
     failed.push(labels[4])
   }
 
   if (results[5].status === 'fulfilled') {
-    galleryAnime.value = withDemoGallery(results[5].value, 'anime', fallbackOpts)
+    galleryAnime.value = withDemoGallery(results[5].value.list, 'anime', dbOnly)
+    galleryAnimeMeta.value = results[5].value.pagination
     trackDemo(labels[5], galleryAnime.value)
   } else {
-    galleryAnime.value = withDemoGallery([], 'anime', fallbackOpts)
+    galleryAnime.value = withDemoGallery([], 'anime', failFallback)
+    galleryAnimeMeta.value = null
     trackDemo(labels[5], galleryAnime.value)
     failed.push(labels[5])
   }
 
   if (results[6].status === 'fulfilled') {
-    galleryReal.value = withDemoGallery(results[6].value, 'real', fallbackOpts)
+    galleryReal.value = withDemoGallery(results[6].value.list, 'real', dbOnly)
+    galleryRealMeta.value = results[6].value.pagination
     trackDemo(labels[6], galleryReal.value)
   } else {
-    galleryReal.value = withDemoGallery([], 'real', fallbackOpts)
+    galleryReal.value = withDemoGallery([], 'real', failFallback)
+    galleryRealMeta.value = null
     trackDemo(labels[6], galleryReal.value)
     failed.push(labels[6])
   }
 
   if (results[7].status === 'fulfilled') {
     const graph = results[7].value
-    graphData.value = withDemoGraph(graph.characters.length ? graph : null, fallbackOpts)
+    graphData.value = withDemoGraph(graph.characters.length ? graph : null, dbOnly)
     if (graphData.value?.characters.some((c) => isDemoItemId(c.id))) {
       demoSections.push(labels[7])
     }
   } else {
-    graphData.value = withDemoGraph(null, fallbackOpts)
+    graphData.value = withDemoGraph(null, failFallback)
     if (graphData.value) demoSections.push(labels[7])
     failed.push(labels[7])
   }
@@ -437,6 +480,16 @@ onMounted(loadHome)
             </div>
           </div>
           <button type="button" class="gallery-arrow gallery-arrow-right" aria-label="向右滚动" @click.stop="scrollGallery(1)">›</button>
+        </div>
+        <div v-if="galleryHasMore" class="gallery-load-more">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            :disabled="galleryLoadingMore"
+            @click="loadMoreGallery"
+          >
+            {{ galleryLoadingMore ? '加载中...' : '加载更多图片' }}
+          </button>
         </div>
       </RevealBlock>
 
@@ -623,9 +676,9 @@ onMounted(loadHome)
   border-radius: 20px;
   border: 1px solid var(--border-subtle);
   background:
-    radial-gradient(circle at top right, rgba(201, 169, 98, 0.1), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 248, 242, 0.88));
-  box-shadow: 0 16px 40px rgba(62, 48, 35, 0.06);
+    radial-gradient(circle at top right, var(--accent-glow), transparent 42%),
+    var(--bg-card);
+  box-shadow: var(--shadow-card);
 }
 
 .activity-home-stats {
@@ -673,6 +726,12 @@ onMounted(loadHome)
 .gallery-empty {
   text-align: center;
   padding: 1.5rem 0;
+}
+
+.gallery-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.85rem;
 }
 
 .gallery-scroll-item:focus-visible {

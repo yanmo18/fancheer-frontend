@@ -75,6 +75,18 @@ export interface GalleryItem {
   title?: string
 }
 
+export interface PaginationMeta {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export interface PaginatedList<T> {
+  list: T[]
+  pagination: PaginationMeta
+}
+
 export interface GraphCharacter {
   id: string
   name: string

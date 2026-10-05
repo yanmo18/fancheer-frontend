@@ -5,6 +5,7 @@ import type {
   BannerItem,
   GalleryItem,
   GraphData,
+  PaginatedList,
   SongItem,
   StreamerInfo,
 } from '@/types/api'
@@ -24,11 +25,15 @@ export const getSongs = () =>
 export const getActivities = () =>
   request<ActivityItem[]>({ url: '/api/activities', method: 'GET' })
 
-export const getGallery = (category?: string) =>
-  request<GalleryItem[]>({
+export const getGallery = (category?: string, page = 1, pageSize = 20) =>
+  request<PaginatedList<GalleryItem>>({
     url: '/api/gallery',
     method: 'GET',
-    params: category ? { category } : undefined,
+    params: {
+      ...(category ? { category } : {}),
+      page,
+      pageSize,
+    },
   })
 
 
