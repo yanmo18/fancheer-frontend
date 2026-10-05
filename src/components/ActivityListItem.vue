@@ -190,9 +190,27 @@ function badgeClass(tone: string) {
 
   border-radius: 16px;
 
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(252, 247, 240, 0.92));
+  background: var(--bg-card);
 
-  box-shadow: 0 8px 24px rgba(62, 48, 35, 0.05);
+  box-shadow: var(--shadow-card);
+
+}
+
+.activity-item--home .activity-title,
+
+.activity-item--page .activity-title {
+
+  color: var(--text-primary);
+
+  font-weight: 600;
+
+}
+
+.activity-item--home .activity-desc,
+
+.activity-item--page .activity-desc {
+
+  color: var(--text-secondary);
 
 }
 
@@ -258,9 +276,9 @@ function badgeClass(tone: string) {
 
   border-radius: 12px;
 
-  background: rgba(201, 169, 98, 0.1);
+  background: var(--accent-gradient-subtle);
 
-  border-color: rgba(201, 169, 98, 0.22);
+  border-color: var(--border-medium);
 
 }
 
