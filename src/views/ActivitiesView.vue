@@ -1,18 +1,12 @@
 <script setup lang="ts">
 
 import { computed, onMounted, ref } from 'vue'
-
 import { RouterLink } from 'vue-router'
-
 import ActivityListItem from '@/components/ActivityListItem.vue'
-
+import ActivityMonthCalendar from '@/components/ActivityMonthCalendar.vue'
 import * as publicApi from '@/api/public'
-
-import { withDemoActivities } from '@/utils/demoContent'
-import { isDemoItemId } from '@/utils/demoFallback'
-
 import { getActivityStatus } from '@/utils/activity'
-
+import { eachDateKeyInclusive, getTodayKey, shiftMonth } from '@/utils/calendar'
 import type { ActivityItem } from '@/types/api'
 
 
@@ -52,6 +46,11 @@ const activityStats = computed(() => {
 
 type StatusFilter = 'all' | 'ongoing' | 'upcoming' | 'ended'
 const statusFilter = ref<StatusFilter>('all')
+const todayKey = getTodayKey()
+const todayParts = todayKey.split('-').map(Number)
+const calYear = ref(todayParts[0] ?? new Date().getFullYear())
+const calMonth = ref(todayParts[1] ?? new Date().getMonth() + 1)
+const selectedDate = ref<string | null>(null)
 
 const filteredActivities = computed(() => {
   if (statusFilter.value === 'all') return activities.value
@@ -60,13 +59,42 @@ const filteredActivities = computed(() => {
   )
 })
 
+const dateFilteredActivities = computed(() => {
+  const date = selectedDate.value
+  if (!date) return filteredActivities.value
+  return filteredActivities.value.filter((act) =>
+    eachDateKeyInclusive(act.startTime, act.endTime).includes(date),
+  )
+})
+
+function onChangeMonth(delta: number) {
+  const next = shiftMonth(calYear.value, calMonth.value, delta)
+  calYear.value = next.year
+  calMonth.value = next.month
+}
+
+function onSelectDate(date: string) {
+  selectedDate.value = selectedDate.value === date ? null : date
+  const [y, m] = date.split('-').map(Number)
+  if (y && m) {
+    calYear.value = y
+    calMonth.value = m
+  }
+}
+
+function jumpToday() {
+  selectedDate.value = todayKey
+  calYear.value = todayParts[0] ?? calYear.value
+  calMonth.value = todayParts[1] ?? calMonth.value
+}
+
 const groupedActivities = computed(() => {
 
   const groups = new Map<string, ActivityItem[]>()
 
 
 
-  for (const act of filteredActivities.value) {
+  for (const act of dateFilteredActivities.value) {
 
     const date = new Date(act.startTime)
 
@@ -98,22 +126,12 @@ async function loadActivities() {
   loading.value = true
   error.value = ''
   loadWarning.value = ''
-  const fallbackOpts = { allowFallback: true } as const
   try {
     const list = await publicApi.getActivities()
-    activities.value = withDemoActivities(list, fallbackOpts)
-    if (!list.length && activities.value.length) {
-      loadWarning.value = '当前展示演示活动，后台恢复后将显示真实数据'
-    } else if (activities.value.some((item) => isDemoItemId(item.id))) {
-      loadWarning.value = '部分活动为演示数据'
-    }
+    activities.value = list
   } catch (e) {
-    activities.value = withDemoActivities([], fallbackOpts)
-    if (activities.value.length) {
-      loadWarning.value = '活动接口暂不可用，当前展示演示数据'
-    } else {
-      error.value = e instanceof Error ? e.message : '加载失败'
-    }
+    activities.value = []
+    error.value = e instanceof Error ? e.message : '加载失败'
   } finally {
     loading.value = false
   }
@@ -204,11 +222,21 @@ onMounted(loadActivities)
 
     <p v-else-if="!activities.length" class="state">暂无活动</p>
 
-    <p v-else-if="!filteredActivities.length" class="state">没有符合筛选的活动</p>
+    <template v-else>
+      <ActivityMonthCalendar
+        :activities="activities"
+        :year="calYear"
+        :month="calMonth"
+        :selected-date="selectedDate"
+        @change-month="onChangeMonth"
+        @select="onSelectDate"
+        @jump-today="jumpToday"
+      />
 
+      <p v-if="!filteredActivities.length" class="state">没有符合筛选的活动</p>
+      <p v-else-if="!dateFilteredActivities.length" class="state">这一天没有活动</p>
 
-
-    <div v-else class="activities-content">
+      <div v-else class="activities-content">
 
       <section
 
@@ -241,6 +269,7 @@ onMounted(loadActivities)
       </section>
 
     </div>
+    </template>
 
   </div>
 
@@ -251,13 +280,13 @@ onMounted(loadActivities)
 <style scoped>
 
 .activities-page {
-
   max-width: 920px;
-
   margin: 0 auto;
-
   padding: 5.5rem 1.5rem 3.5rem;
+}
 
+.activities-content {
+  margin-top: 1.5rem;
 }
 
 
@@ -274,11 +303,11 @@ onMounted(loadActivities)
 
   background:
 
-    radial-gradient(circle at top right, rgba(201, 169, 98, 0.12), transparent 45%),
+    radial-gradient(circle at top right, var(--accent-glow), transparent 45%),
 
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(252, 248, 242, 0.9));
+    var(--bg-card);
 
-  box-shadow: 0 14px 36px rgba(62, 48, 35, 0.06);
+  box-shadow: var(--shadow-card);
 
 }
 

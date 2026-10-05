@@ -44,3 +44,24 @@ export function shiftMonth(year: number, month: number, delta: number) {
     month: date.getMonth() + 1,
   }
 }
+
+/** 活动跨天：按上海日历列出闭区间内每一天 */
+export function eachDateKeyInclusive(startIso: string, endIso?: string | null) {
+  const start = new Date(startIso)
+  if (Number.isNaN(start.getTime())) return []
+  const parsedEnd = endIso ? new Date(endIso) : start
+  const end = Number.isNaN(parsedEnd.getTime()) ? start : parsedEnd
+  const startKey = getTodayKey(start)
+  const endKey = getTodayKey(end)
+  const [sy, sm, sd] = startKey.split('-').map(Number)
+  const [ey, em, ed] = endKey.split('-').map(Number)
+  const cursor = new Date(sy, sm - 1, sd)
+  const last = new Date(ey, em - 1, ed)
+  if (last < cursor) return [startKey]
+  const keys: string[] = []
+  while (cursor <= last) {
+    keys.push(formatDateKey(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate()))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return keys
+}
