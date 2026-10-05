@@ -311,13 +311,13 @@ async function runToggleLike(msg: MessageItem) {
       await messagesApi.unlikeMessage(msg.id)
     } else {
       await messagesApi.likeMessage(msg.id)
-      poppingLikeIds.value = new Set(poppingLikeIds.value).add(id)
-      window.setTimeout(() => {
-        const next = new Set(poppingLikeIds.value)
-        next.delete(id)
-        poppingLikeIds.value = next
-      }, 420)
     }
+    poppingLikeIds.value = new Set(poppingLikeIds.value).add(id)
+    window.setTimeout(() => {
+      const next = new Set(poppingLikeIds.value)
+      next.delete(id)
+      poppingLikeIds.value = next
+    }, 420)
   } catch (e) {
     msg.isLiked = prevLiked
     msg.liked = prevLiked
