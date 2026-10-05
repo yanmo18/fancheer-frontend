@@ -552,14 +552,14 @@ onBeforeUnmount(() => {
 .graph-char-name {
   margin: 0 0 0.5rem;
   font-size: 1.125rem;
-  color: var(--text-primary, #3d3028);
+  color: var(--text-primary);
 }
 
 .graph-char-bio {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.6;
-  color: var(--text-secondary, #5a6068);
+  color: var(--text-secondary);
   white-space: pre-wrap;
 }
 

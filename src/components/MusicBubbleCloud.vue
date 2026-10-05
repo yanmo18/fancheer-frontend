@@ -344,8 +344,8 @@ onBeforeUnmount(() => {
   padding: 6px 8px 8px;
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 242, 232, 0.9));
-  box-shadow: 0 8px 24px rgba(62, 48, 35, 0.08);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
   cursor: grab;
   display: flex;
   flex-direction: column;
