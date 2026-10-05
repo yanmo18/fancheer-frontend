@@ -421,10 +421,10 @@ onMounted(loadHome)
             </div>
           </article>
         </div>
+        <p v-else class="muted section-empty">暂无荣誉记录</p>
       </RevealBlock>
 
       <RevealBlock
-        v-if="songs.length"
         id="home-music"
         variant="music"
         tag="section"
@@ -437,11 +437,11 @@ onMounted(loadHome)
             <div class="section-line" />
           </div>
         </div>
-        <MusicPlayer :songs="songs" :streamer-name="streamer?.name" />
+        <p v-if="!songs.length" class="muted section-empty">暂无音乐作品</p>
+        <MusicPlayer v-else :songs="songs" :streamer-name="streamer?.name" />
       </RevealBlock>
 
       <RevealBlock
-        v-if="galleryAnime.length || galleryReal.length"
         variant="gallery"
         tag="section"
         class="section"
@@ -523,7 +523,7 @@ onMounted(loadHome)
         </div>
       </RevealBlock>
 
-      <RevealBlock v-if="activities.length" variant="events" tag="section" class="section section-activities">
+      <RevealBlock variant="events" tag="section" class="section section-activities">
         <div class="section-header section-header--split">
           <div>
             <div class="section-label">行程记录</div>
@@ -546,7 +546,8 @@ onMounted(loadHome)
           </div>
         </div>
 
-        <div class="activity-home-panel">
+        <p v-if="!activities.length" class="muted section-empty">暂无活动安排</p>
+        <div v-else class="activity-home-panel">
           <div
             class="activity-list-wrapper"
             :class="{ 'activity-list-wrapper--preview': hasMoreActivities }"
@@ -566,7 +567,7 @@ onMounted(loadHome)
         </div>
       </RevealBlock>
 
-      <RevealBlock v-if="graphData" variant="graph" tag="section" class="section">
+      <RevealBlock variant="graph" tag="section" class="section">
         <div class="section-header">
           <div>
             <div class="section-label">人物关系</div>
@@ -574,7 +575,8 @@ onMounted(loadHome)
             <div class="section-line" />
           </div>
         </div>
-        <Suspense>
+        <p v-if="!graphData" class="muted section-empty">暂无关系图谱</p>
+        <Suspense v-else>
           <GraphViewer :data="graphData" />
           <template #fallback>
             <p class="muted">图谱加载中...</p>
@@ -753,7 +755,8 @@ onMounted(loadHome)
   letter-spacing: 0.04em;
 }
 
-.gallery-empty {
+.gallery-empty,
+.section-empty {
   text-align: center;
   padding: 1.5rem 0;
 }
