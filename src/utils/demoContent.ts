@@ -60,7 +60,7 @@ export function withDemoBanners(banners: BannerItem[], options?: DemoFallbackOpt
   }
 
   return banners.slice(0, MAX_HOME_BANNERS).map((item, index) =>
-    isMissingMediaUrl(item.imageUrl)
+    shouldApplyDemoFallback(options) && isMissingMediaUrl(item.imageUrl)
       ? { ...item, imageUrl: pickByIndex(DEMO_BANNER_IMAGES, index) }
       : item,
   )
@@ -81,7 +81,10 @@ export function withDemoStreamer(
   }
   return {
     ...info,
-    avatarUrl: isMissingMediaUrl(info.avatarUrl) ? DEMO_STREAMER_AVATAR : info.avatarUrl,
+    avatarUrl:
+      shouldApplyDemoFallback(options) && isMissingMediaUrl(info.avatarUrl)
+        ? DEMO_STREAMER_AVATAR
+        : info.avatarUrl,
   }
 }
 
@@ -98,7 +101,7 @@ export function withDemoAwards(awards: AwardItem[], options?: DemoFallbackOption
   }
 
   return awards.map((item, index) =>
-    isMissingMediaUrl(item.imageUrl)
+    shouldApplyDemoFallback(options) && isMissingMediaUrl(item.imageUrl)
       ? { ...item, imageUrl: pickByIndex(DEMO_AWARD_IMAGES, index) }
       : item,
   )
@@ -117,7 +120,7 @@ export function withDemoSongs(songs: SongItem[], options?: DemoFallbackOptions) 
   }
 
   return songs.map((item, index) =>
-    isMissingMediaUrl(item.coverUrl)
+    shouldApplyDemoFallback(options) && isMissingMediaUrl(item.coverUrl)
       ? { ...item, coverUrl: pickByIndex(DEMO_SONG_COVERS, index) }
       : item,
   )
@@ -139,7 +142,7 @@ export function withDemoActivities(activities: ActivityItem[], options?: DemoFal
   }
 
   return activities.map((item, index) =>
-    isMissingMediaUrl(item.coverUrl)
+    shouldApplyDemoFallback(options) && isMissingMediaUrl(item.coverUrl)
       ? { ...item, coverUrl: pickByIndex(DEMO_ACTIVITY_COVERS, index) }
       : item,
   )
@@ -158,7 +161,7 @@ export function withDemoGallery(
 
   if (valid.length) {
     return valid.map((item, index) =>
-      isMissingMediaUrl(item.imageUrl)
+      shouldApplyDemoFallback(options) && isMissingMediaUrl(item.imageUrl)
         ? { ...item, imageUrl: pickByIndex(pool.map((p) => p.imageUrl), index) }
         : item,
     )
@@ -218,7 +221,7 @@ export function withDemoGraph(graph: GraphData | null, options?: DemoFallbackOpt
   }
 
   const characters = graph.characters.map((item, index) =>
-    isMissingMediaUrl(item.avatarUrl)
+    shouldApplyDemoFallback(options) && isMissingMediaUrl(item.avatarUrl)
       ? { ...item, avatarUrl: pickByIndex(DEMO_GRAPH_AVATARS, index) }
       : item,
   )
